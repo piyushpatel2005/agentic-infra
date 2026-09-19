@@ -46,11 +46,15 @@ resource "oci_core_instance" "hermes" {
       })
       dashboard_service_unit           = file("${path.module}/../systemd/hermes-dashboard.service")
       gateway_service_unit             = file("${path.module}/../systemd/hermes-gateway.service")
+      rotate_provider_script           = file("${path.module}/../scripts/rotate-provider.sh")
+      rotate_provider_cron             = file("${path.module}/../cron/hermes-rotate-provider.cron")
       hermes_user                      = var.hermes_user
       data_volume_device               = var.data_volume_device
       swap_size_gb                     = var.swap_size_gb
       dashboard_basic_auth_secret_ocid = var.dashboard_basic_auth_secret_ocid
       tailscale_authkey_secret_ocid    = var.tailscale_authkey_secret_ocid
+      github_pat_secret_ocid           = var.github_pat_secret_ocid
+      provider_rotation                = join(",", var.provider_rotation)
     }))
   }
 

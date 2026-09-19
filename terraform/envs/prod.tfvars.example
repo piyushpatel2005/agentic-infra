@@ -12,6 +12,18 @@ ssh_public_key = "ssh-ed25519 AAAA... you@example.com"
 dashboard_basic_auth_secret_ocid = "ocid1.vaultsecret.oc1..replace-after-running-bootstrap-secrets"
 tailscale_authkey_secret_ocid    = "ocid1.vaultsecret.oc1..replace-after-running-bootstrap-secrets"
 
+# Optional — omit to leave the stdio GitHub MCP without a PAT (gh CLI /
+# github/* skills still work once you `gh auth login` manually over SSH).
+# github_pat_secret_ocid = "ocid1.vaultsecret.oc1..from-bootstrap-secrets---github-pat"
+
+# Optional — defaults rotate openrouter -> nvidia_nim -> mistral every 4h.
+# Replace the nvidia_nim/mistral model names with ones your account can use.
+# provider_rotation = [
+#   "openrouter:openrouter/auto",
+#   "nvidia_nim:nvidia/llama-3.1-nemotron-70b-instruct",
+#   "mistral:mistral-large-latest",
+# ]
+
 # Only these CIDRs may reach TCP/22 on the instance. Never set 0.0.0.0/0.
 ssh_allowed_cidrs = [
   "203.0.113.4/32", # example: your home/office IP
