@@ -116,6 +116,11 @@ variable "dashboard_basic_auth_secret_ocid" {
   type        = string
 }
 
+variable "tailscale_authkey_secret_ocid" {
+  description = "OCID of the Vault secret holding an ephemeral Tailscale pre-auth key, created out-of-band by scripts/bootstrap-secrets.sh."
+  type        = string
+}
+
 variable "nvidia_nim_base_url" {
   description = "OpenAI-compatible base URL for NVIDIA NIM, wired in as a custom Hermes provider."
   type        = string

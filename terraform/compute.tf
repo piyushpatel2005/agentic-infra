@@ -50,6 +50,7 @@ resource "oci_core_instance" "hermes" {
       data_volume_device               = var.data_volume_device
       swap_size_gb                     = var.swap_size_gb
       dashboard_basic_auth_secret_ocid = var.dashboard_basic_auth_secret_ocid
+      tailscale_authkey_secret_ocid    = var.tailscale_authkey_secret_ocid
     }))
   }
 
