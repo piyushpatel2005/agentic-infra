@@ -57,3 +57,8 @@ output "instance_public_ip" {
 output "instance_private_ip" {
   value = data.oci_core_private_ips.hermes_primary.private_ips[0].ip_address
 }
+
+output "alerts_topic_id" {
+  description = "OCID of the OCI Notifications topic (backup staleness, instance stop/terminate alerts)."
+  value       = oci_ons_notification_topic.alerts.id
+}

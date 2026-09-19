@@ -148,3 +148,31 @@ variable "provider_rotation" {
     "mistral:mistral-large-latest",
   ]
 }
+
+variable "age_recipient_public_key" {
+  description = "age public key (starts with age1...) backups are encrypted to. Generate with `age-keygen -o key.txt`; keep the private key off the VM, in a password manager."
+  type        = string
+}
+
+variable "workspace_dir" {
+  description = "Directory on the instance backed up daily and mirrored to GitHub."
+  type        = string
+  default     = "/home/hermes/workspace"
+}
+
+variable "github_mirror_owner" {
+  description = "GitHub org or user the off-cloud git mirror pushes repos to. Empty = git-mirror disabled."
+  type        = string
+  default     = ""
+}
+
+variable "alert_email" {
+  description = "Email address subscribed to the alerts topic (backup staleness, instance stop/terminate). OCI sends a confirmation link here after apply."
+  type        = string
+}
+
+variable "backup_stale_after_hours" {
+  description = "Hours after which a missing successful backup triggers an alert."
+  type        = number
+  default     = 36
+}

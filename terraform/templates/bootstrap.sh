@@ -180,6 +180,9 @@ cp /etc/hermes/hermes-gateway.service /etc/systemd/system/hermes-gateway.service
 systemctl daemon-reload
 systemctl enable --now hermes-dashboard.service
 systemctl enable hermes-gateway.service # left stopped until a platform token is configured
+systemctl enable --now hermes-backup.timer
+systemctl enable --now hermes-git-mirror.timer
+systemctl enable --now hermes-backup-check.timer
 
 # Pick up /etc/cron.d/hermes-rotate-provider without waiting for the daemon's own rescan.
 systemctl restart cron
