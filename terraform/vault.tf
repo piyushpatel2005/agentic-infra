@@ -25,3 +25,20 @@ resource "oci_kms_key" "secrets" {
 
   freeform_tags = local.common_tags
 }
+
+# Separate from "secrets" above: this key encrypts the backups bucket and the
+# data volume at rest (CMK instead of the Oracle-managed default), so a
+# leaked/rotated key never touches the vault secrets used for auth.
+resource "oci_kms_key" "storage" {
+  compartment_id      = var.compartment_ocid
+  display_name        = "${local.name_prefix}-storage-key"
+  management_endpoint = oci_kms_vault.secrets.management_endpoint
+  protection_mode     = "SOFTWARE"
+
+  key_shape {
+    algorithm = "AES"
+    length    = 32
+  }
+
+  freeform_tags = local.common_tags
+}
