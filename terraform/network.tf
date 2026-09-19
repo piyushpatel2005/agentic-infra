@@ -40,8 +40,8 @@ resource "oci_core_route_table" "public" {
 # Subnet-level allowlist. Mirrors the NSG below — OCI enforces both the
 # security list *and* every NSG attached to a VNIC, so keeping them aligned
 # avoids one layer silently being more permissive than intended.
-#checkov:skip=CKV_OCI_17:Stateful (not stateless) rules are intentional here — return traffic for the allowlisted SSH/egress flows is handled automatically instead of doubling every rule.
 resource "oci_core_security_list" "public" {
+  #checkov:skip=CKV_OCI_17:Stateful (not stateless) rules are intentional here — return traffic for the allowlisted SSH/egress flows is handled automatically instead of doubling every rule.
   compartment_id = var.compartment_ocid
   vcn_id         = oci_core_vcn.this.id
   display_name   = "${local.name_prefix}-public-sl"
@@ -95,8 +95,8 @@ resource "oci_core_network_security_group" "instance" {
   freeform_tags = local.common_tags
 }
 
-#checkov:skip=CKV_OCI_21:Stateful is intentional — avoids needing a matching explicit egress rule for every SSH reply packet.
 resource "oci_core_network_security_group_security_rule" "ssh_ingress" {
+  #checkov:skip=CKV_OCI_21:Stateful is intentional — avoids needing a matching explicit egress rule for every SSH reply packet.
   for_each = toset(var.ssh_allowed_cidrs)
 
   network_security_group_id = oci_core_network_security_group.instance.id
@@ -114,8 +114,8 @@ resource "oci_core_network_security_group_security_rule" "ssh_ingress" {
   }
 }
 
-#checkov:skip=CKV2_OCI_2:Egress is intentionally open on this single-purpose VM (LLM APIs, npm/apt, MCP servers); ingress is what's locked down.
 resource "oci_core_network_security_group_security_rule" "egress_all" {
+  #checkov:skip=CKV2_OCI_2:Egress is intentionally open on this single-purpose VM (LLM APIs, npm/apt, MCP servers); ingress is what's locked down.
   network_security_group_id = oci_core_network_security_group.instance.id
   direction                 = "EGRESS"
   protocol                  = "all"

@@ -7,8 +7,8 @@ data "oci_objectstorage_namespace" "this" {
   compartment_id = var.compartment_ocid
 }
 
-#checkov:skip=CKV_OCI_7:No consumer for object events on this bucket; nothing subscribes to them.
 resource "oci_objectstorage_bucket" "backups" {
+  #checkov:skip=CKV_OCI_7:No consumer for object events on this bucket; nothing subscribes to them.
   compartment_id = var.compartment_ocid
   namespace      = data.oci_objectstorage_namespace.this.namespace
   name           = "${local.name_prefix}-backups"
