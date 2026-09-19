@@ -1,0 +1,6 @@
+[Unit]
+Description=Check hermes backup freshness and alert via OCI Notifications
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/check-backup-freshness.sh

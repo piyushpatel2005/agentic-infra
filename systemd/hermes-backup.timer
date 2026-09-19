@@ -1,0 +1,10 @@
+[Unit]
+Description=Run hermes-backup.service daily at 03:15 UTC
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

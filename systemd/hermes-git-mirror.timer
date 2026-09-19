@@ -1,0 +1,10 @@
+[Unit]
+Description=Run hermes-git-mirror.service daily at 03:45 UTC
+
+[Timer]
+OnCalendar=*-*-* 03:45:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
