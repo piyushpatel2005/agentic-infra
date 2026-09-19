@@ -1,0 +1,35 @@
+# Terraform
+**/.terraform/
+**/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# tfvars may contain secrets — only committed *.tfvars.example files are allowed
+*.tfvars
+!*.tfvars.example
+
+# Secrets & keys
+.env
+*.env
+!*.env.example
+*.pem
+*.key
+age-identity.txt
+*-identity.txt
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+
+# Local scratch
+*.log
+tmp/
+.direnv/
