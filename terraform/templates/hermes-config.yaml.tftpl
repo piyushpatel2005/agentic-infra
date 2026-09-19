@@ -20,3 +20,41 @@ providers:
     api: "${nvidia_nim_base_url}"
   mistral:
     api: "${mistral_base_url}"
+
+toolsets:
+  - hermes-cli
+  - browser
+
+browser:
+  cloud_provider: local
+  engine: lightpanda # ~16x lower RAM than Chrome; falls back to packaged Chromium for screenshots/vision
+  inactivity_timeout: 120
+  record_sessions: false
+
+# Only one task may be "in progress" on the Kanban board at a time — the
+# dispatcher simply won't spawn another worker while this many are running.
+kanban:
+  max_in_progress: 1
+
+mcp_servers:
+  # Keeps a full Chromium resident once used; recycled automatically so it
+  # never lingers, and only spawned on first actual tool call (lazy).
+  playwright:
+    command: "npx"
+    args: ["-y", "@playwright/mcp@latest", "--headless"]
+    lazy: true
+    idle_timeout_seconds: 900 # recycle after 15 min without a tool call
+    max_lifetime_seconds: 86400 # and at least once a day regardless
+
+  # GitHub's hosted MCP needs a self-registered OAuth app (see PLAN.md), so
+  # this stdio server + a PAT is the supported path; `gh` CLI + bundled
+  # github/* skills remain the primary integration.
+  github:
+    command: "npx"
+    args: ["-y", "@modelcontextprotocol/server-github"]
+    env:
+      GITHUB_PERSONAL_ACCESS_TOKEN: "$${GITHUB_PERSONAL_ACCESS_TOKEN}"
+    tools:
+      include: [list_issues, create_issue, update_issue, search_code]
+      prompts: false
+      resources: false
