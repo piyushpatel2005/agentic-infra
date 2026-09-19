@@ -1,0 +1,98 @@
+name: ci
+
+on:
+  push:
+    branches: ["main", "phase/**"]
+  pull_request:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    name: terraform fmt / validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for Terraform files
+        id: tf
+        run: echo "present=$(find terraform -name '*.tf' 2>/dev/null | head -1 | wc -l)" >> "$GITHUB_OUTPUT"
+
+      - uses: hashicorp/setup-terraform@v3
+        if: steps.tf.outputs.present == '1'
+        with:
+          terraform_wrapper: false
+
+      - name: terraform fmt -check -recursive
+        if: steps.tf.outputs.present == '1'
+        run: terraform fmt -check -recursive terraform
+
+      - name: terraform validate (root + bootstrap)
+        if: steps.tf.outputs.present == '1'
+        run: |
+          set -euo pipefail
+          for dir in terraform terraform/bootstrap; do
+            if [ -d "$dir" ] && find "$dir" -maxdepth 1 -name '*.tf' | grep -q .; then
+              echo "== validating $dir =="
+              (cd "$dir" && terraform init -backend=false -input=false && terraform validate)
+            fi
+          done
+
+  tflint:
+    name: tflint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for Terraform files
+        id: tf
+        run: echo "present=$(find terraform -name '*.tf' 2>/dev/null | head -1 | wc -l)" >> "$GITHUB_OUTPUT"
+      - uses: terraform-linters/setup-tflint@v4
+        if: steps.tf.outputs.present == '1'
+      - name: tflint --recursive
+        if: steps.tf.outputs.present == '1'
+        run: |
+          tflint --init
+          tflint --recursive
+
+  checkov:
+    name: checkov
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for Terraform files
+        id: tf
+        run: echo "present=$(find terraform -name '*.tf' 2>/dev/null | head -1 | wc -l)" >> "$GITHUB_OUTPUT"
+      - name: Run Checkov
+        if: steps.tf.outputs.present == '1'
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: terraform
+          quiet: true
+          compact: true
+
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for shell scripts
+        id: sh
+        run: echo "present=$(find scripts -name '*.sh' 2>/dev/null | head -1 | wc -l)" >> "$GITHUB_OUTPUT"
+      - name: Run shellcheck
+        if: steps.sh.outputs.present == '1'
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          find scripts -name '*.sh' -print0 | xargs -0 shellcheck -S warning
+
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
