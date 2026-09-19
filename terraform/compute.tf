@@ -13,6 +13,11 @@ data "oci_core_images" "ubuntu" {
 }
 
 resource "oci_core_instance" "hermes" {
+  # checkov's CKV_OCI_4 only recognizes the nested launch_options path; the
+  # top-level attribute below is the documented, provider-safe way to set
+  # this without hand-specifying the rest of the computed launch_options
+  # block (risking a mismatch with the image's required boot settings).
+  #checkov:skip=CKV_OCI_4:In-transit encryption IS enabled via the top-level is_pv_encryption_in_transit_enabled attribute below; not via launch_options, to avoid overriding other computed boot settings.
   compartment_id                      = var.compartment_ocid
   availability_domain                 = local.availability_domain
   display_name                        = "${local.name_prefix}-agent-vm"
