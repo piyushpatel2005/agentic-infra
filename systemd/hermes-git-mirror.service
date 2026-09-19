@@ -1,0 +1,7 @@
+[Unit]
+Description=Mirror workspace git repos to private GitHub
+After=hermes-backup.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/git-mirror.sh

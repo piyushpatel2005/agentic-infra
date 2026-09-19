@@ -29,6 +29,17 @@ write_files:
       HERMES_OCI_SECRET_OCID_GITHUB_PAT=${github_pat_secret_ocid}
       HERMES_PROVIDER_ROTATION=${provider_rotation}
 
+  - path: /etc/hermes/backup.env
+    permissions: '0600'
+    content: |
+      HERMES_USER=${hermes_user}
+      HERMES_BACKUP_BUCKET=${backups_bucket_name}
+      HERMES_BACKUP_AGE_RECIPIENT=${age_recipient_public_key}
+      HERMES_WORKSPACE_DIR=${workspace_dir}
+      HERMES_GITHUB_MIRROR_OWNER=${github_mirror_owner}
+      HERMES_ALERTS_TOPIC_OCID=${alerts_topic_id}
+      HERMES_BACKUP_STALE_AFTER_HOURS=${backup_stale_after_hours}
+
   - path: /etc/hermes/config.yaml.tmpl
     permissions: '0600'
     content: |
@@ -58,6 +69,51 @@ write_files:
     permissions: '0644'
     content: |
       ${indent(6, rotate_provider_cron)}
+
+  - path: /usr/local/bin/hermes-backup.sh
+    permissions: '0700'
+    content: |
+      ${indent(6, hermes_backup_script)}
+
+  - path: /usr/local/bin/git-mirror.sh
+    permissions: '0700'
+    content: |
+      ${indent(6, git_mirror_script)}
+
+  - path: /usr/local/bin/check-backup-freshness.sh
+    permissions: '0700'
+    content: |
+      ${indent(6, backup_check_script)}
+
+  - path: /etc/systemd/system/hermes-backup.service
+    permissions: '0644'
+    content: |
+      ${indent(6, hermes_backup_service_unit)}
+
+  - path: /etc/systemd/system/hermes-backup.timer
+    permissions: '0644'
+    content: |
+      ${indent(6, hermes_backup_timer_unit)}
+
+  - path: /etc/systemd/system/hermes-git-mirror.service
+    permissions: '0644'
+    content: |
+      ${indent(6, git_mirror_service_unit)}
+
+  - path: /etc/systemd/system/hermes-git-mirror.timer
+    permissions: '0644'
+    content: |
+      ${indent(6, git_mirror_timer_unit)}
+
+  - path: /etc/systemd/system/hermes-backup-check.service
+    permissions: '0644'
+    content: |
+      ${indent(6, backup_check_service_unit)}
+
+  - path: /etc/systemd/system/hermes-backup-check.timer
+    permissions: '0644'
+    content: |
+      ${indent(6, backup_check_timer_unit)}
 
 runcmd:
   - [bash, /root/bootstrap.sh]

@@ -48,6 +48,15 @@ resource "oci_core_instance" "hermes" {
       gateway_service_unit             = file("${path.module}/../systemd/hermes-gateway.service")
       rotate_provider_script           = file("${path.module}/../scripts/rotate-provider.sh")
       rotate_provider_cron             = file("${path.module}/../cron/hermes-rotate-provider.cron")
+      hermes_backup_script             = file("${path.module}/../scripts/hermes-backup.sh")
+      git_mirror_script                = file("${path.module}/../scripts/git-mirror.sh")
+      backup_check_script              = file("${path.module}/../scripts/check-backup-freshness.sh")
+      hermes_backup_service_unit       = file("${path.module}/../systemd/hermes-backup.service")
+      hermes_backup_timer_unit         = file("${path.module}/../systemd/hermes-backup.timer")
+      git_mirror_service_unit          = file("${path.module}/../systemd/hermes-git-mirror.service")
+      git_mirror_timer_unit            = file("${path.module}/../systemd/hermes-git-mirror.timer")
+      backup_check_service_unit        = file("${path.module}/../systemd/hermes-backup-check.service")
+      backup_check_timer_unit          = file("${path.module}/../systemd/hermes-backup-check.timer")
       hermes_user                      = var.hermes_user
       data_volume_device               = var.data_volume_device
       swap_size_gb                     = var.swap_size_gb
@@ -55,6 +64,12 @@ resource "oci_core_instance" "hermes" {
       tailscale_authkey_secret_ocid    = var.tailscale_authkey_secret_ocid
       github_pat_secret_ocid           = var.github_pat_secret_ocid
       provider_rotation                = join(",", var.provider_rotation)
+      backups_bucket_name              = oci_objectstorage_bucket.backups.name
+      age_recipient_public_key         = var.age_recipient_public_key
+      workspace_dir                    = var.workspace_dir
+      github_mirror_owner              = var.github_mirror_owner
+      alerts_topic_id                  = oci_ons_notification_topic.alerts.id
+      backup_stale_after_hours         = var.backup_stale_after_hours
     }))
   }
 

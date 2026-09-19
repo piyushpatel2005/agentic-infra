@@ -1,0 +1,6 @@
+[Unit]
+Description=Hermes Agent daily backup to OCI Object Storage
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/hermes-backup.sh
