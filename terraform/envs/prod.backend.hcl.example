@@ -1,0 +1,17 @@
+# Fill in bucket/namespace/access_key/secret_key from `terraform apply` output
+# in terraform/bootstrap, then:
+#   terraform init -backend-config=envs/prod.backend.hcl
+#
+# Do not commit the filled-in version of this file (only *.example files are
+# tracked — see .gitignore).
+bucket                      = "hermes-tfstate"
+key                         = "prod/terraform.tfstate"
+region                      = "us-ashburn-1"
+endpoint                    = "https://<namespace>.compat.objectstorage.us-ashburn-1.oraclecloud.com"
+access_key                  = "<backend_access_key output from terraform/bootstrap>"
+secret_key                  = "<backend_secret_key output from terraform/bootstrap>"
+skip_region_validation      = true
+skip_credentials_validation = true
+skip_metadata_api_check     = true
+skip_requesting_account_id  = true
+use_path_style              = true
