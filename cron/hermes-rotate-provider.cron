@@ -1,0 +1,5 @@
+# Rotates the active Hermes LLM provider every 4 hours across the pool
+# configured in ~/.hermes/.env (HERMES_PROVIDER_ROTATION). Installed by
+# cloud-init to /etc/cron.d/hermes-rotate-provider — requires a trailing
+# newline and the user field (cron.d syntax, unlike a per-user crontab).
+0 */4 * * * root /usr/local/bin/rotate-provider.sh >>/var/log/hermes-rotate-provider.log 2>&1
