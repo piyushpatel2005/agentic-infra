@@ -1,12 +1,10 @@
 #!/usr/bin/env bash
 # Cloud-init payload: mounts the data volume, adds swap, creates the `hermes`
-# user on top of the mount, installs Hermes Agent, joins the tailnet and
-# fronts the dashboard with `tailscale serve` HTTPS, fetches secrets from OCI
-# Vault via instance principal, writes config/env, and starts the dashboard
-# service. Runs once as root on first boot.
-#
-# Browser tooling (Lightpanda / Playwright MCP / GitHub MCP) is deliberately
-# NOT set up here — it lands in Phase 6 against this same running instance.
+# user on top of the mount, installs Hermes Agent and its agent tooling
+# (browser, Playwright MCP, GitHub CLI/MCP), joins the tailnet and fronts the
+# dashboard with `tailscale serve` HTTPS, fetches secrets from OCI Vault via
+# instance principal, writes config/env, and starts the dashboard + provider
+# rotation cron. Runs once as root on first boot.
 set -euo pipefail
 
 log() { echo "[bootstrap] $*"; }
@@ -74,7 +72,7 @@ iptables -C INPUT -i tailscale0 -p tcp --dport 9119 -j ACCEPT 2>/dev/null ||
   iptables -I INPUT -i tailscale0 -p tcp --dport 9119 -j ACCEPT
 netfilter-persistent save
 
-# --- 5. Install Hermes Agent as the service user (browser/computer-use deferred to Phase 6) ---
+# --- 5. Install Hermes Agent as the service user (own browser tooling set up in step 9) ---
 log "installing Hermes Agent"
 runuser -u "$HERMES_USER_NAME" -- bash -lc \
   'curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --skip-browser --skip-computer-use'
@@ -100,6 +98,11 @@ DASH_SECRET=$(jq -r '.secret' <<<"$DASHBOARD_JSON")
 
 TAILSCALE_AUTHKEY=$(fetch_secret "$HERMES_OCI_SECRET_OCID_TAILSCALE")
 
+GITHUB_PAT=""
+if [ -n "${HERMES_OCI_SECRET_OCID_GITHUB_PAT:-}" ]; then
+  GITHUB_PAT=$(fetch_secret "$HERMES_OCI_SECRET_OCID_GITHUB_PAT")
+fi
+
 # --- 7. Install Tailscale, join the tailnet, and front the dashboard with HTTPS ---
 log "installing Tailscale"
 curl -fsSL https://tailscale.com/install.sh | sh
@@ -124,7 +127,29 @@ chown "$HERMES_USER_NAME":"$HERMES_USER_NAME" "${MOUNT_POINT}/.hermes/config.yam
 # even though the service itself still binds 127.0.0.1 — see PLAN.md §2.1.
 runuser -u "$HERMES_USER_NAME" -- bash -lc "hermes config set dashboard.public_url '${PUBLIC_URL}'"
 
-# --- 9. Write .env (dashboard auth + provider key placeholders) ---
+# --- 9. Browser tooling, Playwright MCP's Chromium, and GitHub CLI ---
+log "installing agent-browser, Playwright's Chromium, and gh CLI"
+runuser -u "$HERMES_USER_NAME" -- bash -lc 'npm install -g agent-browser'
+npx --yes playwright install-deps chromium
+
+if ! command -v gh >/dev/null 2>&1; then
+  curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /usr/share/keyrings/githubcli-archive-keyring.gpg
+  chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" >/etc/apt/sources.list.d/github-cli.list
+  apt-get update -qq
+  apt-get install -y -qq gh
+fi
+
+if [ -n "$GITHUB_PAT" ]; then
+  gh_pat_file=$(mktemp)
+  printf '%s' "$GITHUB_PAT" >"$gh_pat_file"
+  chown "$HERMES_USER_NAME":"$HERMES_USER_NAME" "$gh_pat_file"
+  chmod 600 "$gh_pat_file"
+  runuser -u "$HERMES_USER_NAME" -- bash -lc "gh auth login --with-token < '${gh_pat_file}'"
+  rm -f "$gh_pat_file"
+fi
+
+# --- 10. Write .env (dashboard auth + provider key placeholders) ---
 cat >"${MOUNT_POINT}/.hermes/.env" <<EOF
 # Dashboard auth (basic provider) — fetched from OCI Vault at boot.
 HERMES_DASHBOARD_BASIC_AUTH_USERNAME=${DASH_USER}
@@ -137,18 +162,29 @@ HERMES_DASHBOARD_BASIC_AUTH_SECRET=${DASH_SECRET}
 OPENROUTER_API_KEY=
 NVIDIA_NIM_API_KEY=
 MISTRAL_API_KEY=
+
+# GitHub PAT for the stdio github MCP (empty until you provision
+# github_pat_secret_ocid, or set it here directly).
+GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PAT}
+
+# provider:model pairs the 4-hourly cron (cron/hermes-rotate-provider.cron)
+# cycles the active model through. Edit freely; takes effect on the next run.
+HERMES_PROVIDER_ROTATION=${HERMES_PROVIDER_ROTATION}
 EOF
 chown "$HERMES_USER_NAME":"$HERMES_USER_NAME" "${MOUNT_POINT}/.hermes/.env"
 chmod 600 "${MOUNT_POINT}/.hermes/.env"
 
-# --- 10. Install and start services ---
+# --- 11. Install and start services ---
 cp /etc/hermes/hermes-dashboard.service /etc/systemd/system/hermes-dashboard.service
 cp /etc/hermes/hermes-gateway.service /etc/systemd/system/hermes-gateway.service
 systemctl daemon-reload
 systemctl enable --now hermes-dashboard.service
-systemctl enable hermes-gateway.service # left stopped until a platform token is configured (Phase 6)
+systemctl enable hermes-gateway.service # left stopped until a platform token is configured
 
-# --- 11. Best-effort health check, logged for later inspection ---
+# Pick up /etc/cron.d/hermes-rotate-provider without waiting for the daemon's own rescan.
+systemctl restart cron
+
+# --- 12. Best-effort health check, logged for later inspection ---
 runuser -u "$HERMES_USER_NAME" -- bash -lc 'hermes doctor' >/var/log/hermes-doctor.log 2>&1 || true
 
 log "bootstrap complete"
