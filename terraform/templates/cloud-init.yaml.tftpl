@@ -22,6 +22,7 @@ write_files:
       HERMES_DATA_DEVICE=${data_volume_device}
       HERMES_SWAP_SIZE_GB=${swap_size_gb}
       HERMES_OCI_SECRET_OCID_DASHBOARD=${dashboard_basic_auth_secret_ocid}
+      HERMES_OCI_SECRET_OCID_TAILSCALE=${tailscale_authkey_secret_ocid}
 
   - path: /etc/hermes/config.yaml.tmpl
     permissions: '0600'

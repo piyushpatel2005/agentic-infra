@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Cloud-init payload (Phase 4): mounts the data volume, adds swap, creates the
-# `hermes` user on top of the mount, installs Hermes Agent, fetches dashboard
-# credentials from OCI Vault via instance principal, writes config/env, and
-# starts the dashboard service. Runs once as root on first boot.
+# Cloud-init payload: mounts the data volume, adds swap, creates the `hermes`
+# user on top of the mount, installs Hermes Agent, joins the tailnet and
+# fronts the dashboard with `tailscale serve` HTTPS, fetches secrets from OCI
+# Vault via instance principal, writes config/env, and starts the dashboard
+# service. Runs once as root on first boot.
 #
-# Browser tooling (Lightpanda / Playwright MCP / GitHub MCP) and Tailscale are
-# deliberately NOT set up here — they land in later phases against this same
-# running instance.
+# Browser tooling (Lightpanda / Playwright MCP / GitHub MCP) is deliberately
+# NOT set up here — it lands in Phase 6 against this same running instance.
 set -euo pipefail
 
 log() { echo "[bootstrap] $*"; }
@@ -83,23 +83,48 @@ log "installing web/pty/messaging extras"
 runuser -u "$HERMES_USER_NAME" -- bash -lc \
   'cd ~/.hermes/hermes-agent && uv pip install -e ".[web,pty,messaging]"'
 
-# --- 6. Fetch dashboard credentials from OCI Vault via instance principal ---
-log "fetching dashboard credentials from Vault"
+# --- 6. Fetch Vault secrets (dashboard credentials + Tailscale auth key) ---
+log "fetching secrets from Vault"
 pip3 install --break-system-packages --quiet oci-cli
 
-DASHBOARD_JSON=$(oci --auth instance_principal vault secret get-secret-bundle \
-  --secret-id "$HERMES_OCI_SECRET_OCID_DASHBOARD" \
-  --query 'data."secret-bundle-content".content' --raw-output | base64 -d)
+fetch_secret() {
+  oci --auth instance_principal vault secret get-secret-bundle \
+    --secret-id "$1" \
+    --query 'data."secret-bundle-content".content' --raw-output | base64 -d
+}
 
+DASHBOARD_JSON=$(fetch_secret "$HERMES_OCI_SECRET_OCID_DASHBOARD")
 DASH_USER=$(jq -r '.username' <<<"$DASHBOARD_JSON")
 DASH_PASS=$(jq -r '.password' <<<"$DASHBOARD_JSON")
 DASH_SECRET=$(jq -r '.secret' <<<"$DASHBOARD_JSON")
 
-# --- 7. Render config.yaml and .env ---
+TAILSCALE_AUTHKEY=$(fetch_secret "$HERMES_OCI_SECRET_OCID_TAILSCALE")
+
+# --- 7. Install Tailscale, join the tailnet, and front the dashboard with HTTPS ---
+log "installing Tailscale"
+curl -fsSL https://tailscale.com/install.sh | sh
+
+tailscale up --ssh --hostname=hermes-oci --authkey="$TAILSCALE_AUTHKEY" --accept-dns=false
+
+# Re-apply the tailscale0 firewall rule now that the interface actually exists
+# (the Phase 4 rule above was accepted but inactive until now).
+iptables -C INPUT -i tailscale0 -p tcp --dport 9119 -j ACCEPT 2>/dev/null ||
+  iptables -I INPUT -i tailscale0 -p tcp --dport 9119 -j ACCEPT
+netfilter-persistent save
+
+TAILSCALE_DNS_NAME=$(tailscale status --json | jq -r '.Self.DNSName' | sed 's/\.$//')
+PUBLIC_URL="https://${TAILSCALE_DNS_NAME}"
+tailscale serve --bg --https=443 http://127.0.0.1:9119
+
+# --- 8. Render config.yaml, then set the runtime-only public_url ---
 install -d -o "$HERMES_USER_NAME" -g "$HERMES_USER_NAME" -m 755 "${MOUNT_POINT}/.hermes"
 cp /etc/hermes/config.yaml.tmpl "${MOUNT_POINT}/.hermes/config.yaml"
 chown "$HERMES_USER_NAME":"$HERMES_USER_NAME" "${MOUNT_POINT}/.hermes/config.yaml"
+# Declaring a non-loopback public_url is what engages the dashboard auth gate
+# even though the service itself still binds 127.0.0.1 — see PLAN.md §2.1.
+runuser -u "$HERMES_USER_NAME" -- bash -lc "hermes config set dashboard.public_url '${PUBLIC_URL}'"
 
+# --- 9. Write .env (dashboard auth + provider key placeholders) ---
 cat >"${MOUNT_POINT}/.hermes/.env" <<EOF
 # Dashboard auth (basic provider) — fetched from OCI Vault at boot.
 HERMES_DASHBOARD_BASIC_AUTH_USERNAME=${DASH_USER}
@@ -116,14 +141,14 @@ EOF
 chown "$HERMES_USER_NAME":"$HERMES_USER_NAME" "${MOUNT_POINT}/.hermes/.env"
 chmod 600 "${MOUNT_POINT}/.hermes/.env"
 
-# --- 8. Install and start services ---
+# --- 10. Install and start services ---
 cp /etc/hermes/hermes-dashboard.service /etc/systemd/system/hermes-dashboard.service
 cp /etc/hermes/hermes-gateway.service /etc/systemd/system/hermes-gateway.service
 systemctl daemon-reload
 systemctl enable --now hermes-dashboard.service
 systemctl enable hermes-gateway.service # left stopped until a platform token is configured (Phase 6)
 
-# --- 9. Best-effort health check, logged for later inspection ---
+# --- 11. Best-effort health check, logged for later inspection ---
 runuser -u "$HERMES_USER_NAME" -- bash -lc 'hermes doctor' >/var/log/hermes-doctor.log 2>&1 || true
 
 log "bootstrap complete"
