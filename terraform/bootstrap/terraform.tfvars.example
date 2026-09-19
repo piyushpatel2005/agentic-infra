@@ -1,0 +1,5 @@
+region             = "us-ashburn-1" # must be your tenancy's home region
+oci_config_profile = "DEFAULT"
+compartment_ocid   = "ocid1.tenancy.oc1..replace-with-your-tenancy-ocid"
+user_ocid          = "ocid1.user.oc1..replace-with-your-user-ocid"
+name_prefix        = "hermes"

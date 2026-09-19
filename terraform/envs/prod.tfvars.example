@@ -1,0 +1,13 @@
+region             = "us-ashburn-1" # must be your tenancy's home region
+oci_config_profile = "DEFAULT"
+compartment_ocid   = "ocid1.compartment.oc1..replace-with-your-compartment-ocid"
+name_prefix        = "hermes"
+
+# Only these CIDRs may reach TCP/22 on the instance. Never set 0.0.0.0/0.
+ssh_allowed_cidrs = [
+  "203.0.113.4/32", # example: your home/office IP
+]
+
+freeform_tags = {
+  "environment" = "prod"
+}
