@@ -16,7 +16,7 @@ resource "oci_core_instance" "hermes" {
   compartment_id      = var.compartment_ocid
   availability_domain = local.availability_domain
   display_name        = "${local.name_prefix}-agent-vm"
-  shape                = "VM.Standard.A1.Flex"
+  shape               = "VM.Standard.A1.Flex"
 
   shape_config {
     ocpus         = var.instance_ocpus
