@@ -52,3 +52,20 @@ variable "public_subnet_cidr" {
   type        = string
   default     = "10.20.0.0/24"
 }
+
+variable "tenancy_ocid" {
+  description = "Tenancy (root compartment) OCID. Required because dynamic groups are always tenancy-scoped."
+  type        = string
+}
+
+variable "availability_domain_index" {
+  description = "Index into the list of availability domains in the region (0-based). Most Always Free regions have only one."
+  type        = number
+  default     = 0
+}
+
+variable "data_volume_size_gb" {
+  description = "Size of the block volume mounted at /home/hermes. Combined with the boot volume this must stay within the 200 GB Always Free allotment."
+  type        = number
+  default     = 100
+}
