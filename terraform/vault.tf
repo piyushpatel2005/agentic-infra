@@ -13,10 +13,10 @@ resource "oci_kms_vault" "secrets" {
 }
 
 resource "oci_kms_key" "secrets" {
-  compartment_id       = var.compartment_ocid
-  display_name         = "${local.name_prefix}-secrets-key"
-  management_endpoint  = oci_kms_vault.secrets.management_endpoint
-  protection_mode      = "SOFTWARE" # software-protected keys are Always Free; no HSM
+  compartment_id      = var.compartment_ocid
+  display_name        = "${local.name_prefix}-secrets-key"
+  management_endpoint = oci_kms_vault.secrets.management_endpoint
+  protection_mode     = "SOFTWARE" # software-protected keys are Always Free; no HSM
 
   key_shape {
     algorithm = "AES"

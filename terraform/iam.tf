@@ -2,15 +2,15 @@
 # static API keys on disk) and is scoped to exactly two things — objects in
 # its own backups bucket, and secrets in its own vault.
 #
-# The dynamic group matches by compartment for now (Phase 3 has no instance
-# yet to reference by OCID); Phase 4 tightens the matching rule to the
-# specific instance once it exists.
+# The dynamic group matches the specific instance OCID (tightened here in
+# Phase 4 now that the instance exists; Phase 3 scoped it compartment-wide
+# as a self-contained placeholder).
 
 resource "oci_identity_dynamic_group" "hermes_instance" {
   compartment_id = var.tenancy_ocid # dynamic groups are always tenancy-scoped
   name           = "${local.name_prefix}-instance-dynamic-group"
   description    = "Matches the Hermes agent compute instance for instance-principal auth."
-  matching_rule  = "ALL {instance.compartment.id = '${var.compartment_ocid}'}"
+  matching_rule  = "ALL {instance.id = '${oci_core_instance.hermes.id}'}"
 }
 
 resource "oci_identity_policy" "hermes_instance" {

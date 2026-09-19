@@ -1,0 +1,22 @@
+# Rendered once by Terraform (Phase 4) into ~/.hermes/config.yaml. Safe to
+# hand-edit afterwards on the VM — Terraform will not overwrite it on future
+# applies unless the instance itself is replaced.
+#
+# OpenRouter is a first-class Hermes provider (only needs OPENROUTER_API_KEY
+# in .env). NVIDIA NIM and Mistral are OpenAI-compatible endpoints wired in
+# as custom providers below. Switch between them at any time over SSH with
+# `hermes model` or `/model provider:model` inside a session.
+
+terminal:
+  shell_init_files:
+    - ~/.bashrc
+
+model:
+  provider: openrouter
+  default: "openrouter/auto"
+
+providers:
+  nvidia_nim:
+    api: "${nvidia_nim_base_url}"
+  mistral:
+    api: "${mistral_base_url}"

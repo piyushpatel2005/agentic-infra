@@ -1,0 +1,20 @@
+[Unit]
+Description=Hermes Agent messaging gateway
+After=network-online.target hermes-dashboard.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hermes
+Group=hermes
+WorkingDirectory=/home/hermes
+EnvironmentFile=/home/hermes/.hermes/.env
+ExecStart=/home/hermes/.hermes/hermes-agent/venv/bin/hermes gateway run
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=false
+
+[Install]
+WantedBy=multi-user.target

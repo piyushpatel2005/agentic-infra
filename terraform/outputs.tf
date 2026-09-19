@@ -44,3 +44,16 @@ output "vault_key_id" {
 output "dynamic_group_name" {
   value = oci_identity_dynamic_group.hermes_instance.name
 }
+
+output "instance_id" {
+  value = oci_core_instance.hermes.id
+}
+
+output "instance_public_ip" {
+  description = "Reserved public IP now assigned to the instance — use for SSH and as the Tailscale-less fallback."
+  value       = oci_core_public_ip.reserved.ip_address
+}
+
+output "instance_private_ip" {
+  value = data.oci_core_private_ips.hermes_primary.private_ips[0].ip_address
+}

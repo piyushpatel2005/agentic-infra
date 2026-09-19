@@ -79,12 +79,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check for shell scripts
         id: sh
-        run: echo "present=$(find scripts -name '*.sh' 2>/dev/null | head -1 | wc -l)" >> "$GITHUB_OUTPUT"
+        run: echo "present=$(find scripts terraform/templates -name '*.sh' 2>/dev/null | head -1 | wc -l)" >> "$GITHUB_OUTPUT"
       - name: Run shellcheck
         if: steps.sh.outputs.present == '1'
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
-          find scripts -name '*.sh' -print0 | xargs -0 shellcheck -S warning
+          find scripts terraform/templates -name '*.sh' -print0 | xargs -0 shellcheck -S warning
 
   gitleaks:
     name: gitleaks
