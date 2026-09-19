@@ -18,3 +18,29 @@ output "reserved_public_ip" {
   description = "Reserved public IP address — stays stable across instance replacement."
   value       = oci_core_public_ip.reserved.ip_address
 }
+
+output "data_volume_id" {
+  value = oci_core_volume.hermes_data.id
+}
+
+output "backups_bucket_name" {
+  value = oci_objectstorage_bucket.backups.name
+}
+
+output "object_storage_namespace" {
+  value = data.oci_objectstorage_namespace.this.namespace
+}
+
+output "vault_id" {
+  description = "Feed this into scripts/bootstrap-secrets.sh --vault-id."
+  value       = oci_kms_vault.secrets.id
+}
+
+output "vault_key_id" {
+  description = "Feed this into scripts/bootstrap-secrets.sh --key-id."
+  value       = oci_kms_key.secrets.id
+}
+
+output "dynamic_group_name" {
+  value = oci_identity_dynamic_group.hermes_instance.name
+}
