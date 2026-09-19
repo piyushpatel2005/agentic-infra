@@ -69,3 +69,61 @@ variable "data_volume_size_gb" {
   type        = number
   default     = 100
 }
+
+variable "ssh_public_key" {
+  description = "Public key (e.g. contents of ~/.ssh/id_ed25519.pub) installed for the default user on the instance."
+  type        = string
+}
+
+variable "instance_ocpus" {
+  description = "OCPUs for the A1.Flex shape. 2 is the entire Always Free A1 allotment."
+  type        = number
+  default     = 2
+}
+
+variable "instance_memory_gb" {
+  description = "Memory (GB) for the A1.Flex shape. 12 is the entire Always Free A1 allotment."
+  type        = number
+  default     = 12
+}
+
+variable "boot_volume_size_gb" {
+  description = "Boot volume size. Combined with data_volume_size_gb this must stay within the 200 GB Always Free allotment."
+  type        = number
+  default     = 50
+}
+
+variable "hermes_user" {
+  description = "Unprivileged Linux user Hermes Agent runs as."
+  type        = string
+  default     = "hermes"
+}
+
+variable "swap_size_gb" {
+  description = "Swapfile size created on the data volume, an OOM cushion for browser/MCP memory bursts."
+  type        = number
+  default     = 4
+}
+
+variable "data_volume_device" {
+  description = "Device path the data volume is attached at (paravirtualized attachment)."
+  type        = string
+  default     = "/dev/oracleoci/oraclevdb"
+}
+
+variable "dashboard_basic_auth_secret_ocid" {
+  description = "OCID of the Vault secret holding {username,password,secret} JSON for the dashboard basic-auth provider, created out-of-band by scripts/bootstrap-secrets.sh."
+  type        = string
+}
+
+variable "nvidia_nim_base_url" {
+  description = "OpenAI-compatible base URL for NVIDIA NIM, wired in as a custom Hermes provider."
+  type        = string
+  default     = "https://integrate.api.nvidia.com/v1"
+}
+
+variable "mistral_base_url" {
+  description = "OpenAI-compatible base URL for Mistral, wired in as a custom Hermes provider."
+  type        = string
+  default     = "https://api.mistral.ai/v1"
+}
