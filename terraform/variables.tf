@@ -40,3 +40,15 @@ variable "freeform_tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "vcn_cidr" {
+  description = "CIDR block for the VCN."
+  type        = string
+  default     = "10.20.0.0/16"
+}
+
+variable "public_subnet_cidr" {
+  description = "CIDR block for the public subnet the instance lives in."
+  type        = string
+  default     = "10.20.0.0/24"
+}
