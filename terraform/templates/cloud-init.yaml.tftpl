@@ -13,6 +13,9 @@ packages:
   - python3
   - python3-pip
   - iptables-persistent
+  - cron
+  - nodejs
+  - npm
 
 write_files:
   - path: /etc/hermes/bootstrap.env
@@ -23,6 +26,8 @@ write_files:
       HERMES_SWAP_SIZE_GB=${swap_size_gb}
       HERMES_OCI_SECRET_OCID_DASHBOARD=${dashboard_basic_auth_secret_ocid}
       HERMES_OCI_SECRET_OCID_TAILSCALE=${tailscale_authkey_secret_ocid}
+      HERMES_OCI_SECRET_OCID_GITHUB_PAT=${github_pat_secret_ocid}
+      HERMES_PROVIDER_ROTATION=${provider_rotation}
 
   - path: /etc/hermes/config.yaml.tmpl
     permissions: '0600'
@@ -43,6 +48,16 @@ write_files:
     permissions: '0700'
     content: |
       ${indent(6, bootstrap_script)}
+
+  - path: /usr/local/bin/rotate-provider.sh
+    permissions: '0755'
+    content: |
+      ${indent(6, rotate_provider_script)}
+
+  - path: /etc/cron.d/hermes-rotate-provider
+    permissions: '0644'
+    content: |
+      ${indent(6, rotate_provider_cron)}
 
 runcmd:
   - [bash, /root/bootstrap.sh]

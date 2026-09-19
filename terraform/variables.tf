@@ -132,3 +132,19 @@ variable "mistral_base_url" {
   type        = string
   default     = "https://api.mistral.ai/v1"
 }
+
+variable "github_pat_secret_ocid" {
+  description = "OCID of the Vault secret holding a GitHub fine-grained PAT for the stdio GitHub MCP, created out-of-band by scripts/bootstrap-secrets.sh. Empty string = not configured yet; add it later and re-apply."
+  type        = string
+  default     = ""
+}
+
+variable "provider_rotation" {
+  description = "Ordered \"provider:model\" pairs the 4-hourly cron rotates the active model through. Adjust the nvidia_nim/mistral model names to ones your account actually has access to."
+  type        = list(string)
+  default = [
+    "openrouter:openrouter/auto",
+    "nvidia_nim:nvidia/llama-3.1-nemotron-70b-instruct",
+    "mistral:mistral-large-latest",
+  ]
+}
