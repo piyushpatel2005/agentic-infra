@@ -121,13 +121,14 @@ resource "oci_core_network_security_group_security_rule" "egress_all" {
   stateless                 = false
 }
 
-# Reserved so the address survives an instance replacement. Left unassigned
-# here; Phase 4 assigns it to the instance's primary private IP once the
-# compute resource exists (private_ip_id is Updatable on this resource).
+# Reserved so the address survives an instance replacement. Assigned to the
+# instance's primary private IP once the instance exists (Phase 4) —
+# private_ip_id is Updatable on this resource.
 resource "oci_core_public_ip" "reserved" {
   compartment_id = var.compartment_ocid
   display_name   = "${local.name_prefix}-reserved-ip"
   lifetime       = "RESERVED"
+  private_ip_id  = data.oci_core_private_ips.hermes_primary.private_ips[0].id
 
   freeform_tags = local.common_tags
 }
