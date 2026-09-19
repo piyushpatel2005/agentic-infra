@@ -187,7 +187,51 @@ systemctl enable --now hermes-backup-check.timer
 # Pick up /etc/cron.d/hermes-rotate-provider without waiting for the daemon's own rescan.
 systemctl restart cron
 
-# --- 12. Best-effort health check, logged for later inspection ---
+# --- 12. OS hardening: unattended security upgrades, logrotate, fail2ban ---
+log "configuring unattended-upgrades, logrotate, and fail2ban"
+apt-get install -y -qq unattended-upgrades fail2ban
+
+cat >/etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+EOF
+
+cat >/etc/apt/apt.conf.d/50unattended-upgrades <<'EOF'
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}-security";
+    "${distro_id}ESMApps:${distro_codename}-apps-security";
+    "${distro_id}ESM:${distro_codename}-infra-security";
+};
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade::Automatic-Reboot "false";
+EOF
+
+cat >"/etc/logrotate.d/hermes" <<EOF
+${MOUNT_POINT}/.hermes/logs/*.log {
+  daily
+  rotate 14
+  compress
+  delaycompress
+  missingok
+  notifempty
+  copytruncate
+}
+EOF
+
+cat >/etc/fail2ban/jail.local <<'EOF'
+[sshd]
+enabled = true
+port = ssh
+backend = systemd
+maxretry = 5
+bantime = 3600
+findtime = 600
+EOF
+
+systemctl enable --now unattended-upgrades
+systemctl enable --now fail2ban
+
+# --- 13. Best-effort health check, logged for later inspection ---
 runuser -u "$HERMES_USER_NAME" -- bash -lc 'hermes doctor' >/var/log/hermes-doctor.log 2>&1 || true
 
 log "bootstrap complete"
