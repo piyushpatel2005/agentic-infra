@@ -5,9 +5,9 @@ data "oci_objectstorage_namespace" "this" {
 # Counts against the 20 GB / 50k-requests Always Free Object Storage allowance
 # alongside the backups bucket created in Phase 3 — Terraform state itself is
 # a few KB, so this is negligible.
-#checkov:skip=CKV_OCI_7:No consumer for object events on this bucket.
-#checkov:skip=CKV_OCI_9:Bootstrap-only stack; no user secrets are stored here (those are kept out of Terraform state by design — see PLAN.md §4).
 resource "oci_objectstorage_bucket" "tfstate" {
+  #checkov:skip=CKV_OCI_7:No consumer for object events on this bucket.
+  #checkov:skip=CKV_OCI_9:Bootstrap-only stack; no user secrets are stored here (those are kept out of Terraform state by design — see PLAN.md §4).
   compartment_id = var.compartment_ocid
   namespace      = data.oci_objectstorage_namespace.this.namespace
   name           = "${var.name_prefix}-tfstate"

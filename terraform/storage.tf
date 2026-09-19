@@ -11,8 +11,8 @@ locals {
   availability_domain = data.oci_identity_availability_domains.this.availability_domains[var.availability_domain_index].name
 }
 
-#checkov:skip=CKV_OCI_2:Backup IS enabled — see oci_core_volume_backup_policy_assignment.hermes_data below; this check doesn't detect the separate assignment resource.
 resource "oci_core_volume" "hermes_data" {
+  #checkov:skip=CKV_OCI_2:Backup IS enabled — see oci_core_volume_backup_policy_assignment.hermes_data below; this check only looks for the legacy backup_policy_id attribute.
   compartment_id      = var.compartment_ocid
   availability_domain = local.availability_domain
   display_name        = "${local.name_prefix}-data"
