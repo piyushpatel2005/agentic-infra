@@ -1,0 +1,88 @@
+#cloud-config
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release
+  - git
+  - jq
+  - iptables-persistent
+
+write_files:
+  - path: /etc/docker/daemon.json
+    permissions: '0644'
+    content: |
+      {
+        "log-driver": "json-file",
+        "log-opts": {
+          "max-size": "10m",
+          "max-file": "3"
+        }
+      }
+
+  - path: /opt/piston/docker-compose.yml
+    permissions: '0644'
+    content: |
+      version: '3.8'
+      services:
+        piston:
+          image: ghcr.io/engineer-man/piston:latest
+          container_name: piston_api
+          restart: always
+          ports:
+            - "${piston_api_port}:2000"
+          volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+            - /opt/piston/data:/piston/data
+          environment:
+            - PISTON_PORT=2000
+            - PISTON_BIND_ADDRESS=0.0.0.0
+
+  - path: /etc/systemd/system/piston.service
+    permissions: '0644'
+    content: |
+      [Unit]
+      Description=Piston Code Execution Engine
+      After=docker.service
+      Requires=docker.service
+
+      [Service]
+      Type=simple
+      WorkingDirectory=/opt/piston
+      ExecStart=/usr/bin/docker compose up
+      ExecStop=/usr/bin/docker compose down
+      Restart=always
+      RestartSec=10
+
+      [Install]
+      WantedBy=multi-user.target
+
+runcmd:
+  - export DEBIAN_FRONTEND=noninteractive
+  # Install Docker CE
+  - mkdir -p /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  - echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+  - apt-get update -qq
+  - apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  - systemctl enable --now docker
+
+  # Firewall rules for Piston API port
+  - iptables -I INPUT -p tcp --dport ${piston_api_port} -j ACCEPT
+  - netfilter-persistent save
+
+  # Setup Tailscale if authkey provided
+  %{ if tailscale_authkey != "" }
+  - curl -fsSL https://tailscale.com/install.sh | sh
+  - tailscale up --authkey=${tailscale_authkey} --hostname=${hostname_label}
+  %{ endif }
+
+  # Enable and start Piston service
+  - mkdir -p /opt/piston/data
+  - systemctl enable piston.service
+  - systemctl start piston.service

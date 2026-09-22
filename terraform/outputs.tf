@@ -1,64 +1,62 @@
-# Outputs are added phase by phase (network, storage, compute, ...) as each
-# resource lands. Kept as its own file from the start so later phases only
-# ever append here.
+# Root Outputs
 
 output "vcn_id" {
-  value = oci_core_vcn.this.id
+  description = "OCID of VCN."
+  value       = module.network.vcn_id
 }
 
 output "public_subnet_id" {
-  value = oci_core_subnet.public.id
+  description = "OCID of public subnet."
+  value       = module.network.public_subnet_id
 }
 
-output "instance_nsg_id" {
-  value = oci_core_network_security_group.instance.id
+# -----------------------------------------------------------------------------
+# Hermes Outputs (conditional)
+# -----------------------------------------------------------------------------
+output "hermes_instance_id" {
+  description = "OCID of Hermes instance."
+  value       = try(module.hermes[0].instance_id, null)
 }
 
-output "reserved_public_ip" {
-  description = "Reserved public IP address — stays stable across instance replacement."
-  value       = oci_core_public_ip.reserved.ip_address
+output "hermes_public_ip" {
+  description = "Reserved public IP assigned to Hermes instance."
+  value       = try(module.hermes[0].instance_public_ip, null)
 }
 
-output "data_volume_id" {
-  value = oci_core_volume.hermes_data.id
+output "hermes_private_ip" {
+  description = "Private IP of Hermes instance."
+  value       = try(module.hermes[0].instance_private_ip, null)
 }
 
-output "backups_bucket_name" {
-  value = oci_objectstorage_bucket.backups.name
+output "hermes_backups_bucket_name" {
+  description = "Name of Object Storage backups bucket."
+  value       = try(module.hermes[0].backups_bucket_name, null)
 }
 
-output "object_storage_namespace" {
-  value = data.oci_objectstorage_namespace.this.namespace
+output "hermes_vault_id" {
+  description = "OCID of secrets Vault."
+  value       = try(module.hermes[0].vault_id, null)
 }
 
-output "vault_id" {
-  description = "Feed this into scripts/bootstrap-secrets.sh --vault-id."
-  value       = oci_kms_vault.secrets.id
+# -----------------------------------------------------------------------------
+# Piston Outputs (conditional)
+# -----------------------------------------------------------------------------
+output "piston_instance_id" {
+  description = "OCID of Piston instance."
+  value       = try(module.piston[0].instance_id, null)
 }
 
-output "vault_key_id" {
-  description = "Feed this into scripts/bootstrap-secrets.sh --key-id."
-  value       = oci_kms_key.secrets.id
+output "piston_public_ip" {
+  description = "Reserved public IP assigned to Piston instance."
+  value       = try(module.piston[0].instance_public_ip, null)
 }
 
-output "dynamic_group_name" {
-  value = oci_identity_dynamic_group.hermes_instance.name
+output "piston_private_ip" {
+  description = "Private IP of Piston instance."
+  value       = try(module.piston[0].instance_private_ip, null)
 }
 
-output "instance_id" {
-  value = oci_core_instance.hermes.id
-}
-
-output "instance_public_ip" {
-  description = "Reserved public IP now assigned to the instance — use for SSH and as the Tailscale-less fallback."
-  value       = oci_core_public_ip.reserved.ip_address
-}
-
-output "instance_private_ip" {
-  value = data.oci_core_private_ips.hermes_primary.private_ips[0].ip_address
-}
-
-output "alerts_topic_id" {
-  description = "OCID of the OCI Notifications topic (backup staleness, instance stop/terminate alerts)."
-  value       = oci_ons_notification_topic.alerts.id
+output "piston_api_endpoint" {
+  description = "Piston API HTTP endpoint."
+  value       = try(module.piston[0].piston_api_endpoint, null)
 }

@@ -1,0 +1,103 @@
+name: Deploy Infrastructure (Manual Trigger)
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Terraform Action to perform'
+        required: true
+        default: 'plan'
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+      workload:
+        description: 'Workload(s) to deploy/manage'
+        required: true
+        default: 'hermes'
+        type: choice
+        options:
+          - hermes
+          - piston
+          - both
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    name: Terraform Run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup OCI Credentials
+        run: |
+          mkdir -p ~/.oci
+          echo "${{ secrets.OCI_PRIVATE_KEY_BASE64 }}" | base64 -d > ~/.oci/oci_api_key.pem
+          chmod 600 ~/.oci/oci_api_key.pem
+          cat <<EOF > ~/.oci/config
+          [DEFAULT]
+          user=${{ secrets.OCI_USER_OCID }}
+          fingerprint=${{ secrets.OCI_FINGERPRINT }}
+          key_file=~/.oci/oci_api_key.pem
+          tenancy=${{ secrets.OCI_TENANCY_OCID }}
+          region=${{ secrets.OCI_REGION }}
+          EOF
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Set Workload Flags
+        id: flags
+        run: |
+          case "${{ github.event.inputs.workload }}" in
+            hermes)
+              echo "HERMES_FLAG=true" >> "$GITHUB_OUTPUT"
+              echo "PISTON_FLAG=false" >> "$GITHUB_OUTPUT"
+              ;;
+            piston)
+              echo "HERMES_FLAG=false" >> "$GITHUB_OUTPUT"
+              echo "PISTON_FLAG=true" >> "$GITHUB_OUTPUT"
+              ;;
+            both)
+              echo "HERMES_FLAG=true" >> "$GITHUB_OUTPUT"
+              echo "PISTON_FLAG=true" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Terraform Init
+        run: |
+          cd terraform
+          terraform init
+
+      - name: Terraform Plan
+        if: ${{ github.event.inputs.action == 'plan' }}
+        run: |
+          cd terraform
+          terraform plan \
+            -var="deploy_hermes=${{ steps.flags.outputs.HERMES_FLAG }}" \
+            -var="deploy_piston=${{ steps.flags.outputs.PISTON_FLAG }}" \
+            -var-file=envs/prod.tfvars
+
+      - name: Terraform Apply
+        if: ${{ github.event.inputs.action == 'apply' }}
+        run: |
+          cd terraform
+          terraform apply -auto-approve \
+            -var="deploy_hermes=${{ steps.flags.outputs.HERMES_FLAG }}" \
+            -var="deploy_piston=${{ steps.flags.outputs.PISTON_FLAG }}" \
+            -var-file=envs/prod.tfvars
+
+      - name: Terraform Destroy
+        if: ${{ github.event.inputs.action == 'destroy' }}
+        run: |
+          cd terraform
+          terraform destroy -auto-approve \
+            -var="deploy_hermes=${{ steps.flags.outputs.HERMES_FLAG }}" \
+            -var="deploy_piston=${{ steps.flags.outputs.PISTON_FLAG }}" \
+            -var-file=envs/prod.tfvars
