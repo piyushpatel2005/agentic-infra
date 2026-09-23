@@ -13,6 +13,7 @@ override.tf.json
 
 # tfvars may contain secrets — only committed *.tfvars.example files are allowed
 *.tfvars
+terraform/envs/prod.backend.hcl
 !*.tfvars.example
 
 # Secrets & keys

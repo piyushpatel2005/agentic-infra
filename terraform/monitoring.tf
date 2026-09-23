@@ -45,5 +45,7 @@ resource "oci_events_rule" "instance_lifecycle" {
     }
   }
 
+  depends_on = [oci_identity_policy.events_to_ons]
+
   freeform_tags = local.common_tags
 }

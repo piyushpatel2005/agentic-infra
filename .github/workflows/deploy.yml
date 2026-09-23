@@ -1,0 +1,80 @@
+name: deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        type: choice
+        default: 'plan'
+        options:
+          - 'plan'
+          - 'apply'
+          - 'redeploy-vm'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: terraform-production
+  cancel-in-progress: false
+
+jobs:
+  terraform:
+    name: terraform ${{ github.event.inputs.action }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.0
+          terraform_wrapper: false
+
+      - name: Configure OCI credentials
+        run: |
+          mkdir -p ~/.oci
+          cat <<'EOF' > ~/.oci/oci_api_key.pem
+          ${{ secrets.OCI_PRIVATE_KEY }}
+          EOF
+          chmod 600 ~/.oci/oci_api_key.pem
+          cat <<EOF > ~/.oci/config
+          [DEFAULT]
+          user=${{ secrets.OCI_USER_OCID }}
+          fingerprint=${{ secrets.OCI_FINGERPRINT }}
+          key_file=/home/runner/.oci/oci_api_key.pem
+          tenancy=${{ secrets.OCI_TENANCY_OCID }}
+          region=${{ secrets.OCI_REGION }}
+          EOF
+          chmod 600 ~/.oci/config
+
+      - name: Write Backend & Variables configuration
+        run: |
+          cat <<'EOF' > terraform/envs/prod.backend.hcl
+          ${{ secrets.BACKEND_HCL }}
+          EOF
+          cat <<'EOF' > terraform/envs/prod.tfvars
+          ${{ secrets.PROD_TFVARS }}
+          EOF
+
+      - name: Terraform Init
+        working-directory: terraform
+        run: terraform init -backend-config=envs/prod.backend.hcl
+
+      - name: Terraform Plan
+        if: ${{ github.event.inputs.action == 'plan' }}
+        working-directory: terraform
+        run: terraform plan -var-file=envs/prod.tfvars
+
+      - name: Terraform Apply
+        if: ${{ github.event.inputs.action == 'apply' }}
+        working-directory: terraform
+        run: terraform apply -auto-approve -var-file=envs/prod.tfvars
+
+      - name: Terraform Redeploy VM
+        if: ${{ github.event.inputs.action == 'redeploy-vm' }}
+        working-directory: terraform
+        run: |
+          terraform destroy -auto-approve -target=oci_core_instance.hermes -var-file=envs/prod.tfvars
+          terraform apply -auto-approve -var-file=envs/prod.tfvars

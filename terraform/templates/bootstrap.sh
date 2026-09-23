@@ -56,10 +56,14 @@ else
 fi
 
 # --- 3. Create the service user on top of the now-mounted volume ---
-if ! id "$HERMES_USER_NAME" >/dev/null 2>&1; then
+if ! id "$HERMES_USER_NAME" > /dev/null 2>&1; then
   log "creating user ${HERMES_USER_NAME}"
-  useradd -m -d "$MOUNT_POINT" -s /bin/bash "$HERMES_USER_NAME"
+  # -M skips mkdir (mount point already exists); we chown it explicitly below.
+  useradd -M -d "$MOUNT_POINT" -s /bin/bash "$HERMES_USER_NAME"
 fi
+# Always chown: useradd skips ownership when the directory pre-exists (Step 1
+# created /home/hermes as root before the user existed).
+chown "$HERMES_USER_NAME":"$HERMES_USER_NAME" "$MOUNT_POINT"
 
 # --- 4. Restrict host-level access to the dashboard port before it exists ---
 # Ubuntu's OCI image ships an INPUT chain that only allows 22; add 9119 on
@@ -78,17 +82,64 @@ runuser -u "$HERMES_USER_NAME" -- bash -lc \
   'curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --skip-browser --skip-computer-use'
 
 log "installing web/pty/messaging extras"
+# The Hermes installer uses 'venv/' (no dot) and puts the hermes wrapper at
+# ~/.local/bin/hermes. Target the existing venv explicitly with --python.
 runuser -u "$HERMES_USER_NAME" -- bash -lc \
-  'cd ~/.hermes/hermes-agent && uv pip install -e ".[web,pty,messaging]"'
+  'export PATH="$HOME/.local/bin:$HOME/.hermes/hermes-agent/venv/bin:$HOME/.hermes/bin:$PATH" && \
+   /home/hermes/.hermes/bin/uv pip install --python ~/.hermes/hermes-agent/venv/bin/python -e ~/.hermes/hermes-agent/".[web,pty,messaging]"'
+
+# Wrapper script in /usr/local/bin/hermes so operators can run `hermes` commands
+# directly with proper user context, environment, and TTY pass-through.
+cat >/usr/local/bin/hermes <<'EOF'
+#!/usr/bin/env bash
+HERMES_USER="${HERMES_USER:-hermes}"
+HERMES_HOME=$(getent passwd "$HERMES_USER" 2>/dev/null | cut -d: -f6)
+HERMES_HOME="${HERMES_HOME:-/home/hermes}"
+HERMES_BIN="${HERMES_HOME}/.hermes/hermes-agent/venv/bin/hermes"
+
+if [ "$(id -un)" = "$HERMES_USER" ]; then
+  exec "$HERMES_BIN" "$@"
+else
+  exec sudo -u "$HERMES_USER" -H "$HERMES_BIN" "$@"
+fi
+EOF
+chmod 755 /usr/local/bin/hermes
 
 # --- 6. Fetch Vault secrets (dashboard credentials + Tailscale auth key) ---
 log "fetching secrets from Vault"
-pip3 install --break-system-packages --quiet oci-cli
+# Install oci-cli in an isolated venv to avoid conflicts with Debian's urllib3
+# (pip3 install --break-system-packages fails because urllib3 has no RECORD file).
+# python3-venv is not included in the OCI Ubuntu 24.04 image by default.
+apt-get install -y -qq python3-venv
+python3 -m venv /opt/oci-cli-env
+/opt/oci-cli-env/bin/pip install --quiet oci-cli
+
+# Smoke-test instance principal auth before attempting secret fetches.
+# Logs the exact OCI error so the console reveals the root cause without SSH.
+log "smoke-testing instance principal auth..."
+for _ip_attempt in 1 2 3 4 5; do
+  _ip_out=$(/opt/oci-cli-env/bin/oci iam region list --auth instance_principal 2>&1) && {
+    log "instance principal auth: OK"; break
+  }
+  log "instance principal not ready (${_ip_attempt}/5): ${_ip_out}"
+  [ "$_ip_attempt" -lt 5 ] && sleep 10
+done
 
 fetch_secret() {
-  oci --auth instance_principal vault secret get-secret-bundle \
-    --secret-id "$1" \
-    --query 'data."secret-bundle-content".content' --raw-output | base64 -d
+  local secret_id="$1" attempt output rc
+  for attempt in $(seq 1 10); do
+    output=$(/opt/oci-cli-env/bin/oci --auth instance_principal secrets secret-bundle get \
+      --secret-id "$secret_id" \
+      --query 'data."secret-bundle-content".content' --raw-output 2>&1)
+    rc=$?
+    if [ $rc -eq 0 ] && printf '%s' "$output" | base64 -d 2>/dev/null; then
+      return 0
+    fi
+    log "fetch_secret attempt ${attempt}/10 failed (rc=${rc}): ${output}"
+    sleep 6
+  done
+  echo "error: fetch_secret failed after 10 attempts for secret ${secret_id}" >&2
+  return 1
 }
 
 DASHBOARD_JSON=$(fetch_secret "$HERMES_OCI_SECRET_OCID_DASHBOARD")
@@ -125,12 +176,24 @@ cp /etc/hermes/config.yaml.tmpl "${MOUNT_POINT}/.hermes/config.yaml"
 chown "$HERMES_USER_NAME":"$HERMES_USER_NAME" "${MOUNT_POINT}/.hermes/config.yaml"
 # Declaring a non-loopback public_url is what engages the dashboard auth gate
 # even though the service itself still binds 127.0.0.1 — see PLAN.md §2.1.
-runuser -u "$HERMES_USER_NAME" -- bash -lc "hermes config set dashboard.public_url '${PUBLIC_URL}'"
+runuser -u "$HERMES_USER_NAME" -- bash -lc "export PATH=\"\$HOME/.local/bin:\$HOME/.hermes/hermes-agent/venv/bin:\$HOME/.hermes/bin:\$PATH\"; hermes config set dashboard.public_url '${PUBLIC_URL}'"
 
 # --- 9. Browser tooling, Playwright MCP's Chromium, and GitHub CLI ---
-log "installing agent-browser, Playwright's Chromium, and gh CLI"
-runuser -u "$HERMES_USER_NAME" -- bash -lc 'npm install -g agent-browser'
-npx --yes playwright install-deps chromium
+log "installing ripgrep, Node.js 22, agent-browser, Playwright's Chromium, and gh CLI"
+apt-get install -y -qq ripgrep
+
+# Playwright requires Node.js >=20 and agent-browser requires Node >=22.
+# Ubuntu default package is Node 18, so upgrade to Node.js 22.x LTS via NodeSource.
+if ! node -v 2>/dev/null | grep -E '^v(2[0-9])' >/dev/null; then
+  curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+  apt-get install -y -qq nodejs
+fi
+
+npm install -g agent-browser || true
+# Install OS system dependencies for Playwright as root
+npx --yes playwright install-deps chromium || true
+# Download Playwright Chromium binaries under hermes user (no --with-deps flag to avoid sudo prompt)
+runuser -u "$HERMES_USER_NAME" -- bash -lc 'npx --yes playwright install chromium' || true
 
 if ! command -v gh >/dev/null 2>&1; then
   curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg -o /usr/share/keyrings/githubcli-archive-keyring.gpg
@@ -175,8 +238,8 @@ chown "$HERMES_USER_NAME":"$HERMES_USER_NAME" "${MOUNT_POINT}/.hermes/.env"
 chmod 600 "${MOUNT_POINT}/.hermes/.env"
 
 # --- 11. Install and start services ---
-cp /etc/hermes/hermes-dashboard.service /etc/systemd/system/hermes-dashboard.service
-cp /etc/hermes/hermes-gateway.service /etc/systemd/system/hermes-gateway.service
+[ -f /etc/hermes/hermes-dashboard.service ] && cp -f /etc/hermes/hermes-dashboard.service /etc/systemd/system/hermes-dashboard.service 2>/dev/null || true
+[ -f /etc/hermes/hermes-gateway.service ] && cp -f /etc/hermes/hermes-gateway.service /etc/systemd/system/hermes-gateway.service 2>/dev/null || true
 systemctl daemon-reload
 systemctl enable --now hermes-dashboard.service
 systemctl enable hermes-gateway.service # left stopped until a platform token is configured
@@ -189,7 +252,7 @@ systemctl restart cron
 
 # --- 12. OS hardening: unattended security upgrades, logrotate, fail2ban ---
 log "configuring unattended-upgrades, logrotate, and fail2ban"
-apt-get install -y -qq unattended-upgrades fail2ban
+apt-get install -y -qq unattended-upgrades fail2ban python3-systemd
 
 cat >/etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
 APT::Periodic::Update-Package-Lists "1";
@@ -232,6 +295,11 @@ systemctl enable --now unattended-upgrades
 systemctl enable --now fail2ban
 
 # --- 13. Best-effort health check, logged for later inspection ---
-runuser -u "$HERMES_USER_NAME" -- bash -lc 'hermes doctor' >/var/log/hermes-doctor.log 2>&1 || true
+# Migrate config version and auto-fix what's possible (e.g. new config keys).
+runuser -u "$HERMES_USER_NAME" -- bash -lc \
+  'export PATH="$HOME/.local/bin:$HOME/.hermes/hermes-agent/venv/bin:$HOME/.hermes/bin:$PATH"; hermes doctor --fix' \
+  >/var/log/hermes-doctor.log 2>&1 || true
+
+runuser -u "$HERMES_USER_NAME" -- bash -lc 'export PATH="$HOME/.local/bin:$HOME/.hermes/hermes-agent/venv/bin:$HOME/.hermes/bin:$PATH"; hermes doctor' >/var/log/hermes-doctor.log 2>&1 || true
 
 log "bootstrap complete"

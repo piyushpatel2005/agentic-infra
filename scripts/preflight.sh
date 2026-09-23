@@ -20,8 +20,21 @@ fi
 
 subs_json=$(oci iam region-subscription list --profile "$profile" --all --output json)
 
-tenancy_ocid=$(jq -r '.data[0]."tenancy-id" // empty' <<<"$subs_json")
 home_region=$(jq -r '.data[] | select(."is-home-region") | ."region-name"' <<<"$subs_json")
+
+tenancy_ocid="${OCI_CLI_TENANCY:-}"
+config_file="${OCI_CLI_CONFIG_FILE:-$HOME/.oci/config}"
+if [ -z "$tenancy_ocid" ] && [ -f "$config_file" ]; then
+  tenancy_ocid=$(awk -v target="[$profile]" '
+    $0 ~ "^ *\\[" { in_profile = ($0 == target) }
+    in_profile && $1 ~ /^tenancy/ {
+      split($0, a, "=")
+      gsub(/^[ \t]+|[ \t]+$/, "", a[2])
+      print a[2]
+      exit
+    }
+  ' "$config_file")
+fi
 
 if [ -z "$tenancy_ocid" ] || [ -z "$home_region" ]; then
   echo "error: could not determine tenancy or home region from the oci CLI — check ~/.oci/config" >&2

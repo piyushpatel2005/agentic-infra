@@ -28,7 +28,8 @@ time. Only `main` is expected to be consistent and deployable.
 ## Prerequisites
 
 - An OCI tenancy with Always Free resources available in its home region.
-- Terraform >= 1.7, the OCI CLI, and `age` installed locally for backup/restore drills.
+- Local tools installed: Terraform (>= 1.7), OCI CLI (`oci`), `age`, and `jq`.
+- Authenticated OCI credentials (`oci setup config` with public API key added in the OCI Console).
 - A Tailscale account (the dashboard is reachable only via your tailnet).
 
 ## Quick start
@@ -36,6 +37,10 @@ time. Only `main` is expected to be consistent and deployable.
 See [docs/RUNBOOK.md](docs/RUNBOOK.md#first-time-deploy) for the full step-by-step. In short:
 
 ```sh
+# 0. Initial OCI setup (if not already configured)
+oci setup config
+# Upload ~/.oci/oci_api_key_public.pem to OCI Console > Profile > API Keys
+
 # 1. One-time: create the Terraform state backend
 cd terraform/bootstrap && cp terraform.tfvars.example terraform.tfvars
 # edit terraform.tfvars, then:

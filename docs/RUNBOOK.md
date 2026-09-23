@@ -5,6 +5,27 @@ for design rationale and [README.md](../README.md) for repo layout.
 
 ## First-time deploy
 
+0. **Configure OCI CLI and API credentials** (one-time workstation setup):
+   - Ensure local tools are installed and accounts are ready:
+     ```sh
+     # macOS (Homebrew)
+     brew install terraform oci-cli age jq
+     ```
+   - Ensure you have a free [Tailscale account](https://tailscale.com) (used for private networking and Tailscale SSH).
+   - Initialize OCI CLI configuration:
+     ```sh
+     oci setup config
+     ```
+     *Prompts will request your **User OCID**, **Tenancy OCID**, and **Home Region** (see table below for where to copy these from the OCI Console). Accept the default options to generate a new RSA API key pair (`~/.oci/oci_api_key.pem`).*
+   - Upload the generated public key to Oracle Cloud:
+     - In OCI Console, click your **Profile icon** (top right) → **My Profile** (or **User Settings**).
+     - Under **Resources** (bottom left), select **API Keys** → **Add API Key**.
+     - Choose **Upload Public Key File** and select `~/.oci/oci_api_key_public.pem` (or choose **Paste Public Key** and paste the file content), then click **Add**.
+   - Verify CLI authentication:
+     ```sh
+     oci iam region-subscription list
+     ```
+
 1. **Bootstrap the Terraform state backend** (one-time, per tenancy):
    ```sh
    cd terraform/bootstrap
@@ -12,16 +33,64 @@ for design rationale and [README.md](../README.md) for repo layout.
    terraform init
    terraform apply
    ```
+
+   <details>
+   <summary><b>Where to find these values in the OCI Console & CLI</b></summary>
+
+   | Variable in `terraform.tfvars` | How to find in OCI Console | How to find via OCI CLI | Notes |
+   |---|---|---|---|
+   | **`compartment_ocid`** | Menu (☰) → **Identity & Security** → **Compartments** → copy OCID | `oci iam compartment list` | For the bootstrap state bucket, this is usually the root compartment (which is your Tenancy OCID `ocid1.tenancy.oc1..`). |
+   | **`user_ocid`** | Profile icon (top right) → **My Profile** → under *User Information*, copy **OCID** (`ocid1.user.oc1..`) | `grep 'user=' ~/.oci/config` | Needed to generate Customer Secret Keys for the S3 state backend. |
+   | **`region`** | Region dropdown (top right) → find your **Home Region** (indicated by a home icon, e.g. `us-ashburn-1`, `us-phoenix-1`) | `oci iam region-subscription list` | Must be the tenancy's home region (Always Free resources are only free there). |
+   | **`tenancy_ocid`** *(used in main stack `prod.tfvars`)* | Profile icon (top right) → **Tenancy: `<name>`** → under *Tenancy Information*, copy **OCID** (`ocid1.tenancy.oc1..`) | `grep 'tenancy=' ~/.oci/config` | Tenancy root OCID (required for tenancy-scoped dynamic groups in `prod.tfvars`). |
+
+   </details>
+
    Note the `tfstate_bucket`, `tfstate_namespace`, `tfstate_s3_endpoint`, `backend_access_key`,
    and `backend_secret_key` outputs (the secret key is shown only once).
 
 2. **Configure the main stack's backend and variables**:
+
+   **A. Generate `terraform/envs/prod.backend.hcl`**:
+   From `terraform/bootstrap`, you can automatically create this file with all outputs filled:
+   ```sh
+   cat <<EOF > ../envs/prod.backend.hcl
+   bucket                      = "$(terraform output -raw tfstate_bucket)"
+   key                         = "prod/terraform.tfstate"
+   region                      = "us-ashburn-1"
+   endpoint                    = "$(terraform output -raw tfstate_s3_endpoint)"
+   access_key                  = "$(terraform output -raw backend_access_key)"
+   secret_key                  = "$(terraform output -raw backend_secret_key)"
+   skip_region_validation      = true
+   skip_credentials_validation = true
+   skip_metadata_api_check     = true
+   skip_requesting_account_id  = true
+   use_path_style              = true
+   EOF
+   ```
+
+   **B. Create and populate `terraform/envs/prod.tfvars`**:
    ```sh
    cd ../..
-   cp terraform/envs/prod.backend.hcl.example terraform/envs/prod.backend.hcl
    cp terraform/envs/prod.tfvars.example terraform/envs/prod.tfvars
-   # fill in both files using the bootstrap outputs above and your own OCIDs
    ```
+
+   <details open>
+   <summary><b>Where to get values for <code>terraform/envs/prod.tfvars</code></b></summary>
+
+   | Variable in `prod.tfvars` | Where to get the value / Command to run | Description |
+   |---|---|---|
+   | **`region`** | `us-ashburn-1` (or your home region) | Home region for Always Free resources. |
+   | **`compartment_ocid`** | Tenancy root OCID or specific compartment OCID (`oci iam compartment list`) | Compartment where VM, network, and storage will reside. |
+   | **`tenancy_ocid`** | Tenancy root OCID (`grep 'tenancy=' ~/.oci/config`) | Needed for IAM policy/dynamic group creation. |
+   | **`ssh_public_key`** *(optional)* | `cat ~/.ssh/id_ed25519.pub` *(optional)* | Optional direct SSH key fallback. Omit if using Tailscale SSH exclusively. |
+   | **`ssh_allowed_cidrs`** *(optional)* | `[]` *(or `["$(curl -s ifconfig.me)/32"]`)* | Set to `[]` for Tailscale SSH (port 22 closed to the public internet). |
+   | **`age_recipient_public_key`** | Run `age-keygen -o key.txt` and copy the public key (`age1...`) | Public key used for encrypted backups in Object Storage. *Keep `key.txt` safe!* |
+   | **`alert_email`** | Your email address (e.g. `you@example.com`) | Receives OCI metric alarms (CPU/RAM/storage/budget). |
+   | **`dashboard_basic_auth_secret_ocid`** | Leave default placeholder for now | Will be populated in **Step 5** after running `bootstrap-secrets.sh`. |
+   | **`tailscale_authkey_secret_ocid`** | Leave default placeholder for now | Will be populated in **Step 5** after running `bootstrap-secrets.sh`. |
+
+   </details>
 
 3. **Preflight check** (confirms home region + reports current A1 usage):
    ```sh
@@ -38,14 +107,18 @@ for design rationale and [README.md](../README.md) for repo layout.
    ```
 
 5. **Seed Vault secrets out-of-band** (never goes into Terraform state):
-   ```sh
-   ../scripts/bootstrap-secrets.sh \
-     --compartment-id <compartment_ocid> \
-     --vault-id <vault_id output> \
-     --key-id <vault_key_id output> \
-     --github-pat <optional PAT>
-   ```
-   Copy the printed `*_secret_ocid` lines into `terraform/envs/prod.tfvars`.
+   - **Prerequisite**: Log in to your [Tailscale Admin Console → Keys](https://login.tailscale.com/admin/settings/keys), click **Generate auth key** (single-use / ephemeral is recommended), and copy the key (`tskey-auth-...`).
+   - Run the secrets bootstrap script:
+     ```sh
+     ../scripts/bootstrap-secrets.sh \
+       --compartment-id "$(grep 'compartment_ocid' envs/prod.tfvars | cut -d'"' -f2)" \
+       --vault-id "$(terraform output -raw vault_id)" \
+       --key-id "$(terraform output -raw vault_key_id)"
+       # Add --github-pat <token> if you generated a GitHub PAT (optional)
+     ```
+     *When prompted, paste your **Tailscale auth key** and enter a **dashboard username** (a secure random password will be generated for you).*
+
+   - Copy the printed `*_secret_ocid` lines into `terraform/envs/prod.tfvars`.
 
 6. **Full apply**:
    ```sh
@@ -64,11 +137,36 @@ for design rationale and [README.md](../README.md) for repo layout.
 Volume, bucket, and vault survive independently of the compute instance, so a full
 redeploy is fast:
 
+### Option A: Local CLI
 ```sh
 cd terraform
 terraform destroy -target=oci_core_instance.hermes -var-file=envs/prod.tfvars
 terraform apply -var-file=envs/prod.tfvars
 ```
+
+### Option B: GitHub Actions
+You can trigger plans, applies, or full VM redeployments directly from the GitHub Actions UI via [.github/workflows/deploy.yml](../.github/workflows/deploy.yml).
+
+#### 1. Configure GitHub Repository Secrets
+In your GitHub repository, navigate to **Settings** → **Secrets and variables** → **Actions** → **New repository secret**, and create the following secrets:
+
+| Secret Name | Value / Source |
+|---|---|
+| `OCI_USER_OCID` | User OCID (`ocid1.user.oc1..`) |
+| `OCI_TENANCY_OCID` | Tenancy OCID (`ocid1.tenancy.oc1..`) |
+| `OCI_FINGERPRINT` | API key fingerprint from `~/.oci/config` (or OCI Console > API Keys) |
+| `OCI_PRIVATE_KEY` | Entire content of your private key file (`~/.oci/oci_api_key.pem`) |
+| `OCI_REGION` | Home region identifier (e.g., `us-ashburn-1`) |
+| `BACKEND_HCL` | Entire content of your filled-in `terraform/envs/prod.backend.hcl` |
+| `PROD_TFVARS` | Entire content of your filled-in `terraform/envs/prod.tfvars` |
+
+#### 2. Trigger the Workflow
+1. Navigate to the **Actions** tab in GitHub.
+2. Select **deploy** from the left-hand workflows list.
+3. Click **Run workflow**:
+   - Choose **`plan`** to preview Terraform changes safely.
+   - Choose **`apply`** to execute general infrastructure updates.
+   - Choose **`redeploy-vm`** to tear down and recreate only the compute instance.
 
 Cloud-init reinstalls Hermes fresh, mounts the *same* data volume (which still has your
 `~/.hermes` and workspace on it, since only the compute instance was destroyed), and

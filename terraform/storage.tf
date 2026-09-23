@@ -20,6 +20,8 @@ resource "oci_core_volume" "hermes_data" {
   vpus_per_gb         = 10 # "Balanced" — the default performance tier, no extra cost beyond size
   kms_key_id          = oci_kms_key.storage.id
 
+  depends_on = [oci_identity_policy.storage_services_kms]
+
   freeform_tags = local.common_tags
 }
 

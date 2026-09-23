@@ -21,17 +21,13 @@ variable "name_prefix" {
 }
 
 variable "ssh_allowed_cidrs" {
-  description = "CIDR blocks allowed to reach TCP/22 on the instance's NSG. Keep this list tight."
+  description = "Optional CIDR blocks allowed to reach TCP/22 on the instance's NSG. Leave empty ([]) when using Tailscale SSH."
   type        = list(string)
-
-  validation {
-    condition     = length(var.ssh_allowed_cidrs) > 0
-    error_message = "At least one CIDR must be allowlisted for SSH; 0.0.0.0/0 is not permitted by this design."
-  }
+  default     = []
 
   validation {
     condition     = !contains(var.ssh_allowed_cidrs, "0.0.0.0/0")
-    error_message = "0.0.0.0/0 is not allowed — SSH must be restricted to specific allowlisted IPs."
+    error_message = "0.0.0.0/0 is not allowed — SSH must be restricted to specific allowlisted IPs or empty."
   }
 }
 
@@ -59,7 +55,7 @@ variable "tenancy_ocid" {
 }
 
 variable "availability_domain_index" {
-  description = "Index into the list of availability domains in the region (0-based). Most Always Free regions have only one."
+  description = "0-based index into the tenancy's list of ADs in the home region."
   type        = number
   default     = 0
 }
@@ -71,8 +67,9 @@ variable "data_volume_size_gb" {
 }
 
 variable "ssh_public_key" {
-  description = "Public key (e.g. contents of ~/.ssh/id_ed25519.pub) installed for the default user on the instance."
+  description = "Optional public SSH key for direct SSH access. If omitted, Tailscale SSH is used."
   type        = string
+  default     = ""
 }
 
 variable "instance_ocpus" {

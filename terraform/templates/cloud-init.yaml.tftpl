@@ -45,12 +45,12 @@ write_files:
     content: |
       ${indent(6, hermes_config_yaml)}
 
-  - path: /etc/hermes/hermes-dashboard.service
+  - path: /etc/systemd/system/hermes-dashboard.service
     permissions: '0644'
     content: |
       ${indent(6, dashboard_service_unit)}
 
-  - path: /etc/hermes/hermes-gateway.service
+  - path: /etc/systemd/system/hermes-gateway.service
     permissions: '0644'
     content: |
       ${indent(6, gateway_service_unit)}

@@ -4,8 +4,8 @@ compartment_ocid   = "ocid1.compartment.oc1..replace-with-your-compartment-ocid"
 tenancy_ocid       = "ocid1.tenancy.oc1..replace-with-your-tenancy-ocid"
 name_prefix        = "hermes"
 
-# Your SSH public key, e.g.: ssh_public_key = file("~/.ssh/id_ed25519.pub")
-ssh_public_key = "ssh-ed25519 AAAA... you@example.com"
+# Optional: SSH public key for direct public access. Omit/leave blank if using Tailscale SSH exclusively.
+# ssh_public_key = "ssh-ed25519 AAAA... you@example.com"
 
 # From `terraform apply` in this stack (vault_id / vault_key_id outputs),
 # then `scripts/bootstrap-secrets.sh --compartment-id ... --vault-id ... --key-id ...`
@@ -33,10 +33,8 @@ alert_email = "you@example.com"
 # Optional — off-cloud git mirror target. Empty (default) disables it.
 # github_mirror_owner = "your-github-username-or-org"
 
-# Only these CIDRs may reach TCP/22 on the instance. Never set 0.0.0.0/0.
-ssh_allowed_cidrs = [
-  "203.0.113.4/32", # example: your home/office IP
-]
+# Optional: Direct public SSH CIDR allowlist. Leave empty ([]) if using Tailscale SSH.
+ssh_allowed_cidrs = []
 
 freeform_tags = {
   "environment" = "prod"

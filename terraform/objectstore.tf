@@ -16,6 +16,8 @@ resource "oci_objectstorage_bucket" "backups" {
   versioning     = "Enabled"
   kms_key_id     = oci_kms_key.storage.id
 
+  depends_on = [oci_identity_policy.storage_services_kms]
+
   freeform_tags = local.common_tags
 }
 
@@ -61,4 +63,6 @@ resource "oci_objectstorage_object_lifecycle_policy" "backups" {
       inclusion_prefixes = ["monthly/"]
     }
   }
+
+  depends_on = [oci_identity_policy.storage_services_kms]
 }
