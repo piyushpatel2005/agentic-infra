@@ -14,7 +14,7 @@ resource "oci_identity_dynamic_group" "hermes_instance" {
   # Using compartment.id (not instance OCID) means redeployed instances are
   # automatically covered without any IAM update. Freeform tags are NOT
   # supported in dynamic group matching rules — only defined tag namespaces are.
-  matching_rule  = "ALL {instance.compartment.id = '${var.compartment_ocid}'}"
+  matching_rule = "ALL {instance.compartment.id = '${var.compartment_ocid}'}"
 }
 
 resource "oci_identity_policy" "hermes_instance" {
