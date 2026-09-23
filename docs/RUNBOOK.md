@@ -168,6 +168,7 @@ In your GitHub repository, navigate to **Settings** → **Secrets and variables*
    - Choose **`plan`** to preview Terraform changes safely.
    - Choose **`apply`** to execute general infrastructure updates.
    - Choose **`redeploy-vm`** to tear down and recreate only the compute instance.
+   - Choose **`destroy`** to tear down the entire main stack (instance, volumes, networking, bucket, vault).
 
 Cloud-init reinstalls Hermes fresh, mounts the *same* data volume (which still has your
 `~/.hermes` and workspace on it, since only the compute instance was destroyed), and
@@ -237,6 +238,51 @@ From the dashboard (`https://hermes-oci.<tailnet>.ts.net` → System → Operati
 Security audit), or via the REST API: `POST /api/ops/security-audit` (authenticated).
 Review the report and address anything flagged before exposing the dashboard more
 broadly.
+
+## Updating secrets in OCI Vault (Tailscale auth key, GitHub PAT, passwords)
+
+All sensitive tokens and credentials used during VM provisioning are stored in OCI Vault as secrets.
+
+### 1. Tailscale Key Expiry & Renewal
+
+- **Running VM (Node Key)**: To prevent your running VM from disconnecting after Tailscale's default 180-day key expiry:
+  1. Open [Tailscale Admin Console → Machines](https://login.tailscale.com/admin/machines).
+  2. Locate `hermes-oci` → click **`...`** → select **Disable key expiry**.
+
+- **Auth Key (`tskey-auth-...`) Renewal**: When your 90-day reusable auth key expires, you only need to renew it in OCI Vault before running `redeploy-vm` or provisioning new instances.
+
+### 2. Updating Secret Content in OCI Vault (In-Place / Zero Code Changes)
+
+Updating the secret directly in OCI Vault creates a new secret version under the **same OCID**. No changes to `prod.tfvars` or GitHub Secrets are needed.
+
+#### Via OCI CLI:
+```sh
+# 1. Paste your new Tailscale auth key
+NEW_AUTH_KEY="tskey-auth-..."
+
+# 2. Automatically read the secret OCID from prod.tfvars
+SECRET_OCID=$(grep -E '^\s*tailscale_authkey_secret_ocid\s*=' terraform/envs/prod.tfvars | cut -d'"' -f2)
+
+# 3. Update the secret in OCI Vault in-place
+oci vault secret update-base64 \
+  --secret-id "$SECRET_OCID" \
+  --secret-content-content "$(printf '%s' "$NEW_AUTH_KEY" | base64 | tr -d '\n')"
+```
+
+#### Via OCI Web Console:
+1. Navigate to **Identity & Security** → **Vault**.
+2. Select your compartment and click your Hermes vault (`hermes-secrets-vault`).
+3. Under **Resources** (left menu), click **Secrets**.
+4. Click the secret you want to update (e.g., `hermes-tailscale-authkey` or `hermes-github-pat`).
+5. Click **Create Secret Version**.
+6. Select **Plain-Text**, paste your new key/token value, and click **Create Secret Version**.
+
+### 3. If Creating a Brand New Secret (New OCID)
+
+If you create a completely new secret instead of a new version of the existing one:
+1. Copy the new Secret OCID (`ocid1.vaultsecret.oc1..`).
+2. Update the corresponding variable in `terraform/envs/prod.tfvars` (e.g. `tailscale_authkey_secret_ocid = "..."`).
+3. Update the **`PROD_TFVARS`** secret in **GitHub Repo → Settings → Secrets and variables → Actions** with the updated `prod.tfvars` content.
 
 ## Teardown
 

@@ -12,6 +12,7 @@ on:
           - 'plan'
           - 'apply'
           - 'redeploy-vm'
+          - 'destroy'
 
 permissions:
   contents: read
@@ -81,3 +82,8 @@ jobs:
         run: |
           terraform destroy -auto-approve -target=oci_core_instance.hermes -var-file=envs/prod.tfvars
           terraform apply -auto-approve -var-file=envs/prod.tfvars
+
+      - name: Terraform Destroy
+        if: ${{ github.event.inputs.action == 'destroy' }}
+        working-directory: terraform
+        run: terraform destroy -auto-approve -var-file=envs/prod.tfvars
