@@ -24,6 +24,9 @@ jobs:
   terraform:
     name: terraform ${{ github.event.inputs.action }}
     runs-on: ubuntu-latest
+    env:
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
     steps:
       - uses: actions/checkout@v4
 
