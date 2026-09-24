@@ -210,7 +210,7 @@ hermes config set model.default "openrouter/auto"
 
 For NVIDIA NIM or Mistral (configured as custom providers), set `model.provider` to
 `nvidia_nim` or `mistral` and `model.default` to a model name that endpoint serves.
-Changes take effect on the next session; restart the gateway for messaging platforms:
+Changes take effect on the next session; restart the gateway for messaging platforms (see [channels.md](channels.md) for channel setup):
 
 ```sh
 sudo systemctl restart hermes-gateway.service
