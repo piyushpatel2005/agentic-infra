@@ -45,7 +45,17 @@ Connect to your OCI VM over Tailscale SSH:
 ssh hermes@hermes-oci.<your-tailnet>.ts.net
 ```
 
-### Option A: Standard Configuration via Environment / CLI (Recommended)
+### Option A: Interactive Setup Script (Recommended)
+
+Run the all-in-one setup script directly from your SSH session:
+```sh
+./scripts/hermes-setup.sh
+```
+*Prompts will request your Telegram Bot Token, Allowed User IDs, and API keys, and will automatically enable `telegram.enabled: true` and start `hermes-gateway.service`.*
+
+---
+
+### Option B: Manual Configuration via Environment / CLI
 
 1. Open the Hermes environment file `/home/hermes/.hermes/.env`:
    ```sh
@@ -67,7 +77,7 @@ ssh hermes@hermes-oci.<your-tailnet>.ts.net
 
 ---
 
-### Option B: Storing Tokens in OCI Vault (For Automated Provisioning)
+### Option C: Storing Tokens in OCI Vault (For Automated Provisioning)
 
 If you prefer managing all credentials centrally in OCI Vault:
 

@@ -16,6 +16,7 @@ packages:
   - cron
   - nodejs
   - npm
+  - syncthing
 
 write_files:
   - path: /etc/hermes/bootstrap.env
@@ -25,6 +26,7 @@ write_files:
       HERMES_DATA_DEVICE=${data_volume_device}
       HERMES_SWAP_SIZE_GB=${swap_size_gb}
       HERMES_OCI_SECRET_OCID_DASHBOARD=${dashboard_basic_auth_secret_ocid}
+      HERMES_TAILSCALE_AUTH_KEY=${tailscale_auth_key}
       HERMES_OCI_SECRET_OCID_TAILSCALE=${tailscale_authkey_secret_ocid}
       HERMES_OCI_SECRET_OCID_GITHUB_PAT=${github_pat_secret_ocid}
       HERMES_PROVIDER_ROTATION=${provider_rotation}
@@ -59,6 +61,11 @@ write_files:
     permissions: '0700'
     content: |
       ${indent(6, bootstrap_script)}
+
+  - path: /usr/local/bin/hermes-setup.sh
+    permissions: '0755'
+    content: |
+      ${indent(6, hermes_setup_script)}
 
   - path: /usr/local/bin/rotate-provider.sh
     permissions: '0755'

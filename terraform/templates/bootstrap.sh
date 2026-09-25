@@ -74,19 +74,18 @@ iptables -C INPUT -i lo -p tcp --dport 9119 -j ACCEPT 2>/dev/null ||
   iptables -I INPUT -i lo -p tcp --dport 9119 -j ACCEPT
 iptables -C INPUT -i tailscale0 -p tcp --dport 9119 -j ACCEPT 2>/dev/null ||
   iptables -I INPUT -i tailscale0 -p tcp --dport 9119 -j ACCEPT
+iptables -C INPUT -i tailscale0 -p tcp --dport 8384 -j ACCEPT 2>/dev/null ||
+  iptables -I INPUT -i tailscale0 -p tcp --dport 8384 -j ACCEPT
+iptables -C INPUT -i tailscale0 -p tcp --dport 22000 -j ACCEPT 2>/dev/null ||
+  iptables -I INPUT -i tailscale0 -p tcp --dport 22000 -j ACCEPT
+iptables -C INPUT -i tailscale0 -p udp --dport 22000 -j ACCEPT 2>/dev/null ||
+  iptables -I INPUT -i tailscale0 -p udp --dport 22000 -j ACCEPT
 netfilter-persistent save
 
 # --- 5. Install Hermes Agent as the service user (own browser tooling set up in step 9) ---
 log "installing Hermes Agent"
 runuser -u "$HERMES_USER_NAME" -- bash -lc \
-  'curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --skip-browser --skip-computer-use'
-
-log "installing web/pty/messaging extras"
-# The Hermes installer uses 'venv/' (no dot) and puts the hermes wrapper at
-# ~/.local/bin/hermes. Target the existing venv explicitly with --python.
-runuser -u "$HERMES_USER_NAME" -- bash -lc \
-  'export PATH="$HOME/.local/bin:$HOME/.hermes/hermes-agent/venv/bin:$HOME/.hermes/bin:$PATH" && \
-   /home/hermes/.hermes/bin/uv pip install --python ~/.hermes/hermes-agent/venv/bin/python -e ~/.hermes/hermes-agent/".[web,pty,messaging]"'
+  'curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash -s -- --skip-browser --non-interactive'
 
 # Wrapper script in /usr/local/bin/hermes so operators can run `hermes` commands
 # directly with proper user context, environment, and TTY pass-through.
@@ -95,7 +94,9 @@ cat >/usr/local/bin/hermes <<'EOF'
 HERMES_USER="${HERMES_USER:-hermes}"
 HERMES_HOME=$(getent passwd "$HERMES_USER" 2>/dev/null | cut -d: -f6)
 HERMES_HOME="${HERMES_HOME:-/home/hermes}"
-HERMES_BIN="${HERMES_HOME}/.hermes/hermes-agent/venv/bin/hermes"
+HERMES_BIN="${HERMES_HOME}/.local/bin/hermes"
+[ -x "$HERMES_BIN" ] || HERMES_BIN="${HERMES_HOME}/.hermes/hermes-agent/venv/bin/hermes"
+[ -x "$HERMES_BIN" ] || HERMES_BIN=$(find "${HERMES_HOME}/.hermes" -name hermes -type f -perm -111 2>/dev/null | head -n1 || echo "${HERMES_HOME}/.local/bin/hermes")
 
 if [ "$(id -un)" = "$HERMES_USER" ]; then
   exec "$HERMES_BIN" "$@"
@@ -111,72 +112,87 @@ log "fetching secrets from Vault"
 # (pip3 install --break-system-packages fails because urllib3 has no RECORD file).
 # python3-venv is not included in the OCI Ubuntu 24.04 image by default.
 apt-get install -y -qq python3-venv
-python3 -m venv /opt/oci-cli-env
-/opt/oci-cli-env/bin/pip install --quiet oci-cli
-
-# Smoke-test instance principal auth before attempting secret fetches.
-# Logs the exact OCI error so the console reveals the root cause without SSH.
-log "smoke-testing instance principal auth..."
-for _ip_attempt in 1 2 3 4 5; do
-  _ip_out=$(/opt/oci-cli-env/bin/oci iam region list --auth instance_principal 2>&1) && {
-    log "instance principal auth: OK"; break
-  }
-  log "instance principal not ready (${_ip_attempt}/5): ${_ip_out}"
-  [ "$_ip_attempt" -lt 5 ] && sleep 10
-done
+# --- 6. Best-effort Vault secrets & credentials ---
+log "checking for Vault secrets..."
+apt-get install -y -qq python3-venv 2>/dev/null || true
+python3 -m venv /opt/oci-cli-env 2>/dev/null || true
+/opt/oci-cli-env/bin/pip install --quiet oci-cli 2>/dev/null || true
 
 fetch_secret() {
-  local secret_id="$1" attempt output rc
-  for attempt in $(seq 1 10); do
+  local secret_id="$1"
+  [ -z "$secret_id" ] && return 1
+  # Skip placeholder / invalid OCIDs
+  [[ "$secret_id" =~ ^ocid1\.vaultsecret ]] || return 1
+  
+  local attempt output rc
+  for attempt in 1 2 3; do
     output=$(/opt/oci-cli-env/bin/oci --auth instance_principal secrets secret-bundle get \
       --secret-id "$secret_id" \
-      --query 'data."secret-bundle-content".content' --raw-output 2>&1)
-    rc=$?
-    if [ $rc -eq 0 ] && printf '%s' "$output" | base64 -d 2>/dev/null; then
-      return 0
+      --query 'data."secret-bundle-content".content' --raw-output 2>/dev/null) && rc=0 || rc=$?
+    if [ $rc -eq 0 ] && [ -n "$output" ]; then
+      if decoded=$(printf '%s' "$output" | base64 -d 2>/dev/null); then
+        printf '%s' "$decoded"
+        return 0
+      fi
     fi
-    log "fetch_secret attempt ${attempt}/10 failed (rc=${rc}): ${output}"
-    sleep 6
+    sleep 2
   done
-  echo "error: fetch_secret failed after 10 attempts for secret ${secret_id}" >&2
   return 1
 }
 
-DASHBOARD_JSON=$(fetch_secret "$HERMES_OCI_SECRET_OCID_DASHBOARD")
-DASH_USER=$(jq -r '.username' <<<"$DASHBOARD_JSON")
-DASH_PASS=$(jq -r '.password' <<<"$DASHBOARD_JSON")
-DASH_SECRET=$(jq -r '.secret' <<<"$DASHBOARD_JSON")
+DASHBOARD_JSON=$(fetch_secret "${HERMES_OCI_SECRET_OCID_DASHBOARD:-}" || true)
+if [ -n "$DASHBOARD_JSON" ] && jq -e '.username' <<<"$DASHBOARD_JSON" >/dev/null 2>&1; then
+  DASH_USER=$(jq -r '.username' <<<"$DASHBOARD_JSON")
+  DASH_PASS=$(jq -r '.password' <<<"$DASHBOARD_JSON")
+  DASH_SECRET=$(jq -r '.secret' <<<"$DASHBOARD_JSON")
+else
+  log "no Vault dashboard secret found; generating local admin credentials"
+  DASH_USER="admin"
+  DASH_PASS=$(openssl rand -base64 18)
+  DASH_SECRET=$(openssl rand -base64 32)
+fi
 
-TAILSCALE_AUTHKEY=$(fetch_secret "$HERMES_OCI_SECRET_OCID_TAILSCALE")
+TAILSCALE_AUTHKEY="${HERMES_TAILSCALE_AUTH_KEY:-}"
+if [ -z "$TAILSCALE_AUTHKEY" ] && [ -n "${HERMES_OCI_SECRET_OCID_TAILSCALE:-}" ]; then
+  TAILSCALE_AUTHKEY=$(fetch_secret "$HERMES_OCI_SECRET_OCID_TAILSCALE" || true)
+fi
 
 GITHUB_PAT=""
 if [ -n "${HERMES_OCI_SECRET_OCID_GITHUB_PAT:-}" ]; then
-  GITHUB_PAT=$(fetch_secret "$HERMES_OCI_SECRET_OCID_GITHUB_PAT")
+  GITHUB_PAT=$(fetch_secret "$HERMES_OCI_SECRET_OCID_GITHUB_PAT" || true)
 fi
 
-# --- 7. Install Tailscale, join the tailnet, and front the dashboard with HTTPS ---
+# --- 7. Install Tailscale & join if auth key is present ---
 log "installing Tailscale"
-curl -fsSL https://tailscale.com/install.sh | sh
+curl -fsSL https://tailscale.com/install.sh | sh || true
 
-tailscale up --ssh --hostname=hermes-oci --authkey="$TAILSCALE_AUTHKEY" --accept-dns=false
+if [ -n "$TAILSCALE_AUTHKEY" ]; then
+  log "joining Tailscale tailnet with Tailscale SSH enabled..."
+  tailscale up --ssh --hostname=hermes-oci --authkey="$TAILSCALE_AUTHKEY" --accept-dns=false || true
+else
+  log "Tailscale auth key not supplied; run 'sudo hermes-setup.sh' after boot to join tailnet."
+fi
 
-# Re-apply the tailscale0 firewall rule now that the interface actually exists
-# (the Phase 4 rule above was accepted but inactive until now).
+# Re-apply the tailscale0 firewall rule
 iptables -C INPUT -i tailscale0 -p tcp --dport 9119 -j ACCEPT 2>/dev/null ||
   iptables -I INPUT -i tailscale0 -p tcp --dport 9119 -j ACCEPT
-netfilter-persistent save
+netfilter-persistent save 2>/dev/null || true
 
-TAILSCALE_DNS_NAME=$(tailscale status --json | jq -r '.Self.DNSName' | sed 's/\.$//')
-PUBLIC_URL="https://${TAILSCALE_DNS_NAME}"
-tailscale serve --bg --https=443 http://127.0.0.1:9119
+TAILSCALE_DNS_NAME=$(tailscale status --json 2>/dev/null | jq -r '.Self.DNSName // empty' 2>/dev/null | sed 's/\.$//' || true)
+if [ -n "$TAILSCALE_DNS_NAME" ]; then
+  PUBLIC_URL="https://${TAILSCALE_DNS_NAME}"
+  tailscale serve --bg --https=443 http://127.0.0.1:9119 2>/dev/null || true
+else
+  PUBLIC_URL="http://127.0.0.1:9119"
+fi
 
-# --- 8. Render config.yaml, then set the runtime-only public_url ---
+# --- 8. Render config.yaml & set runtime public_url ---
 install -d -o "$HERMES_USER_NAME" -g "$HERMES_USER_NAME" -m 755 "${MOUNT_POINT}/.hermes"
-cp /etc/hermes/config.yaml.tmpl "${MOUNT_POINT}/.hermes/config.yaml"
-chown "$HERMES_USER_NAME":"$HERMES_USER_NAME" "${MOUNT_POINT}/.hermes/config.yaml"
-# Declaring a non-loopback public_url is what engages the dashboard auth gate
-# even though the service itself still binds 127.0.0.1 — see PLAN.md §2.1.
-runuser -u "$HERMES_USER_NAME" -- bash -lc "export PATH=\"\$HOME/.local/bin:\$HOME/.hermes/hermes-agent/venv/bin:\$HOME/.hermes/bin:\$PATH\"; hermes config set dashboard.public_url '${PUBLIC_URL}'"
+cp /etc/hermes/config.yaml.tmpl "${MOUNT_POINT}/.hermes/config.yaml" 2>/dev/null || true
+chown "$HERMES_USER_NAME":"$HERMES_USER_NAME" "${MOUNT_POINT}/.hermes/config.yaml" 2>/dev/null || true
+if [ -n "$TAILSCALE_DNS_NAME" ]; then
+  runuser -u "$HERMES_USER_NAME" -- bash -lc "export PATH=\"\$HOME/.local/bin:\$HOME/.hermes/bin:\$PATH\"; hermes config set dashboard.public_url '${PUBLIC_URL}' 2>/dev/null || true"
+fi
 
 # --- 9. Browser tooling, Playwright MCP's Chromium, and GitHub CLI ---
 log "installing ripgrep, Node.js 22, agent-browser, Playwright's Chromium, and gh CLI"
@@ -246,6 +262,71 @@ systemctl enable hermes-gateway.service # left stopped until a platform token is
 systemctl enable --now hermes-backup.timer
 systemctl enable --now hermes-git-mirror.timer
 systemctl enable --now hermes-backup-check.timer
+
+# Enable syncthing service for multi-device profile/skill sync
+if command -v syncthing >/dev/null 2>&1; then
+  log "enabling syncthing service for ${HERMES_USER_NAME}"
+  systemctl enable --now "syncthing@${HERMES_USER_NAME}.service" 2>/dev/null || true
+
+  # Pre-configure .stignore for ~/.hermes if not present
+  if [ ! -f "${MOUNT_POINT}/.hermes/.stignore" ]; then
+    cat >"${MOUNT_POINT}/.hermes/.stignore" <<'STIGNORE'
+// 1. Never sync lock files, sockets, PIDs, or active SQLite DBs (causes conflicts)
+(?d)*.lock
+(?d)*.sock
+(?d)*.pid
+(?d)*.db
+(?d)*.db-shm
+(?d)*.db-wal
+(?d)*.sync-conflict-*
+
+// 2. Never sync machine-specific runtimes, tools, caches, backups, or logs
+(?d)cache
+(?d)audio_cache
+(?d)image_cache
+(?d)logs
+(?d)*.log
+(?d)backups
+(?d).curator_backups
+(?d)tools
+(?d)environments
+(?d)installs
+(?d)source-checks
+(?d)plugin-update-checks
+(?d)terminal-sessions
+(?d)hermes-agent
+(?d)bin
+(?d)node
+(?d)runtime
+(?d)sandboxes
+(?d)desktop
+(?d)desktop-plugins
+(?d)models_dev_cache.*
+(?d)provider_models_cache.json
+(?d)context_length_cache.yaml
+(?d)processes.json
+(?d)spawn-ledger.json
+(?d)gateway*
+
+// 3. WHITELIST: Only sync skills, profiles, memories, sessions, and persona
+!/skills
+!/skills/**
+!/profiles
+!/profiles/**
+!/memories
+!/memories/**
+!/sessions
+!/sessions/**
+!/SOUL.md
+!/active_profile
+
+// 4. Ignore all other root files (.env, auth.json, internal databases)
+*
+STIGNORE
+    chown "${HERMES_USER_NAME}:${HERMES_USER_NAME}" "${MOUNT_POINT}/.hermes/.stignore"
+    chmod 644 "${MOUNT_POINT}/.hermes/.stignore"
+  fi
+fi
 
 # Pick up /etc/cron.d/hermes-rotate-provider without waiting for the daemon's own rescan.
 systemctl restart cron

@@ -79,9 +79,7 @@ jobs:
       - name: Terraform Redeploy VM
         if: ${{ github.event.inputs.action == 'redeploy-vm' }}
         working-directory: terraform
-        run: |
-          terraform destroy -auto-approve -target=oci_core_instance.hermes -var-file=envs/prod.tfvars
-          terraform apply -auto-approve -var-file=envs/prod.tfvars
+        run: terraform apply -auto-approve -var-file=envs/prod.tfvars -replace=oci_core_instance.hermes
 
       - name: Terraform Destroy
         if: ${{ github.event.inputs.action == 'destroy' }}

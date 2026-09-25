@@ -50,7 +50,8 @@ resource "oci_core_instance" "hermes" {
     var.ssh_public_key != "" ? { ssh_authorized_keys = var.ssh_public_key } : {},
     {
       user_data = base64gzip(templatefile("${path.module}/templates/cloud-init.yaml.tftpl", {
-        bootstrap_script = file("${path.module}/templates/bootstrap.sh"),
+        bootstrap_script    = file("${path.module}/templates/bootstrap.sh"),
+        hermes_setup_script = file("${path.module}/../scripts/hermes-setup.sh"),
         hermes_config_yaml = templatefile("${path.module}/templates/hermes-config.yaml.tftpl", {
           nvidia_nim_base_url = var.nvidia_nim_base_url
           mistral_base_url    = var.mistral_base_url
@@ -72,6 +73,7 @@ resource "oci_core_instance" "hermes" {
         data_volume_device               = var.data_volume_device
         swap_size_gb                     = var.swap_size_gb
         dashboard_basic_auth_secret_ocid = var.dashboard_basic_auth_secret_ocid
+        tailscale_auth_key               = var.tailscale_auth_key
         tailscale_authkey_secret_ocid    = var.tailscale_authkey_secret_ocid
         github_pat_secret_ocid           = var.github_pat_secret_ocid
         provider_rotation                = join(",", var.provider_rotation)

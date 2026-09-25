@@ -26,6 +26,7 @@ resource "oci_identity_policy" "hermes_instance" {
     "Allow dynamic-group ${oci_identity_dynamic_group.hermes_instance.name} to manage objects in compartment id ${var.compartment_ocid} where target.bucket.name = '${oci_objectstorage_bucket.backups.name}'",
     "Allow dynamic-group ${oci_identity_dynamic_group.hermes_instance.name} to read buckets in compartment id ${var.compartment_ocid} where target.bucket.name = '${oci_objectstorage_bucket.backups.name}'",
     "Allow dynamic-group ${oci_identity_dynamic_group.hermes_instance.name} to read secret-family in compartment id ${var.compartment_ocid} where target.vault.id = '${oci_kms_vault.secrets.id}'",
+    "Allow dynamic-group ${oci_identity_dynamic_group.hermes_instance.name} to use keys in compartment id ${var.compartment_ocid} where target.key.id = '${oci_kms_key.secrets.id}'",
     "Allow dynamic-group ${oci_identity_dynamic_group.hermes_instance.name} to use ons-topics in compartment id ${var.compartment_ocid} where target.topic.id = '${oci_ons_notification_topic.alerts.id}'",
   ]
 }

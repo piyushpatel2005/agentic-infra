@@ -4,9 +4,12 @@ Terraform-driven deployment of [Hermes Agent](https://hermes-agent.nousresearch.
 on an Oracle Cloud Infrastructure (OCI) **Always Free** Ampere A1 VM, reachable only over
 Tailscale, with encrypted backups to OCI Object Storage and an off-cloud GitHub mirror.
 
-See [PLAN.md](PLAN.md) for the full design, decisions, and phased build-out, and
+See [PLAN.md](PLAN.md) for the full design, decisions, and phased build-out,
 [docs/RUNBOOK.md](docs/RUNBOOK.md) for day-2 operations (deploy, restore drill, switch
-model/provider, teardown, free-tier usage audit).
+model/provider, teardown, free-tier usage audit), [docs/channels.md](docs/channels.md)
+for Telegram messaging setup, [docs/syncthing.md](docs/syncthing.md) for multi-device sync
+(macOS <-> OCI VM), and [docs/managing-repos.md](docs/managing-repos.md) for
+scoping and managing tutorial/content repositories with custom skill guidelines.
 
 ## Status
 
@@ -57,10 +60,9 @@ cp terraform/envs/prod.tfvars.example terraform/envs/prod.tfvars
 cd terraform && terraform init -backend-config=envs/prod.backend.hcl
 terraform apply -var-file=envs/prod.tfvars
 
-# 4. Seed Vault secrets (Tailscale key, dashboard credentials, optional GitHub PAT)
-../scripts/bootstrap-secrets.sh --compartment-id <id> --vault-id <id> --key-id <id>
-# paste the printed *_secret_ocid values into envs/prod.tfvars, then re-apply
-terraform apply -var-file=envs/prod.tfvars
+# 4. Connect via Tailscale SSH and run one-time setup
+ssh hermes@hermes-oci
+sudo /usr/local/bin/hermes-setup.sh
 ```
 
 Then open `https://hermes-oci.<your-tailnet>.ts.net` on any device joined to your

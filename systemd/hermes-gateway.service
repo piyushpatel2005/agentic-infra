@@ -8,8 +8,9 @@ Type=simple
 User=hermes
 Group=hermes
 WorkingDirectory=/home/hermes
+Environment="PATH=/home/hermes/.local/bin:/usr/local/bin:/usr/bin:/bin"
 EnvironmentFile=/home/hermes/.hermes/.env
-ExecStart=/home/hermes/.hermes/hermes-agent/venv/bin/hermes gateway run
+ExecStart=/home/hermes/.local/bin/hermes gateway run
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true

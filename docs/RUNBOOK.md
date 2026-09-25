@@ -88,8 +88,7 @@ for design rationale and [README.md](../README.md) for repo layout.
    | **`ssh_allowed_cidrs`** *(optional)* | `[]` *(or `["$(curl -s ifconfig.me)/32"]`)* | Set to `[]` for Tailscale SSH (port 22 closed to the public internet). |
    | **`age_recipient_public_key`** | Run `age-keygen -o key.txt` and copy the public key (`age1...`) | Public key used for encrypted backups in Object Storage. *Keep `key.txt` safe!* |
    | **`alert_email`** | Your email address (e.g. `you@example.com`) | Receives OCI metric alarms (CPU/RAM/storage/budget). |
-   | **`dashboard_basic_auth_secret_ocid`** | Leave default placeholder for now | Will be populated in **Step 5** after running `bootstrap-secrets.sh`. |
-   | **`tailscale_authkey_secret_ocid`** | Leave default placeholder for now | Will be populated in **Step 5** after running `bootstrap-secrets.sh`. |
+   | **`tailscale_auth_key`** | [login.tailscale.com/admin/settings/keys](https://login.tailscale.com/admin/settings/keys) | Pre-auth key for VM to auto-join tailnet on boot with Tailscale SSH. |
 
    </details>
 
@@ -98,40 +97,28 @@ for design rationale and [README.md](../README.md) for repo layout.
    ./scripts/preflight.sh
    ```
 
-4. **Apply network, storage, and IAM only first** (compute needs Vault secrets that don't
-   exist yet):
+4. **Initialize & Apply Infrastructure** (single command):
    ```sh
    cd terraform
    terraform init -backend-config=envs/prod.backend.hcl
-   terraform apply -target=oci_kms_vault.secrets -target=oci_kms_key.secrets \
-     -var-file=envs/prod.tfvars
-   ```
-
-5. **Seed Vault secrets out-of-band** (never goes into Terraform state):
-   - **Prerequisite**: Log in to your [Tailscale Admin Console → Keys](https://login.tailscale.com/admin/settings/keys), click **Generate auth key** (single-use / ephemeral is recommended), and copy the key (`tskey-auth-...`).
-   - Run the secrets bootstrap script:
-     ```sh
-     ../scripts/bootstrap-secrets.sh \
-       --compartment-id "$(grep 'compartment_ocid' envs/prod.tfvars | cut -d'"' -f2)" \
-       --vault-id "$(terraform output -raw vault_id)" \
-       --key-id "$(terraform output -raw vault_key_id)"
-       # Add --github-pat <token> if you generated a GitHub PAT (optional)
-     ```
-     *When prompted, paste your **Tailscale auth key** and enter a **dashboard username** (a secure random password will be generated for you).*
-
-   - Copy the printed `*_secret_ocid` lines into `terraform/envs/prod.tfvars`.
-
-6. **Full apply**:
-   ```sh
    terraform apply -var-file=envs/prod.tfvars
    ```
-   If you see `Out of host capacity` for `VM.Standard.A1.Flex`, see
-   [A1 capacity errors](#a1-out-of-host-capacity-errors) below.
+   *If you see `Out of host capacity` for `VM.Standard.A1.Flex`, see [A1 capacity errors](#a1-out-of-host-capacity-errors) below.*
 
-7. **Confirm the OCI Notifications email subscription** — check the inbox at `alert_email`
+5. **Confirm the OCI Notifications email subscription** — check the inbox at `alert_email`
    and click the confirmation link, or alerts will never arrive.
 
-8. **Verify** (see [Verification](#verification) below).
+6. **Log in over Tailscale SSH & Run One-Time Setup**:
+   Once the VM finishes boot (~2 minutes), connect via Tailscale SSH:
+   ```sh
+   ssh hermes@hermes-oci
+   ```
+   Run the interactive setup helper to configure model API keys (OpenRouter, NVIDIA NIM), Telegram integration, and Syncthing peer-to-peer sync:
+   ```sh
+   sudo /usr/local/bin/hermes-setup.sh
+   ```
+
+7. **Verify** (see [Verification](#verification) below).
 
 ## Redeploying from scratch
 
@@ -141,8 +128,8 @@ redeploy is fast:
 ### Option A: Local CLI
 ```sh
 cd terraform
-terraform destroy -target=oci_core_instance.hermes -var-file=envs/prod.tfvars
-terraform apply -var-file=envs/prod.tfvars
+terraform apply -var-file=envs/prod.tfvars -replace=oci_core_instance.hermes
+```-file=envs/prod.tfvars
 ```
 
 ### Option B: GitHub Actions
@@ -302,12 +289,21 @@ cd terraform/bootstrap
 terraform destroy
 ```
 
+## Multi-device sync (macOS <-> OCI VM)
+
+For real-time bidirectional synchronization of skills, profiles, sessions, and memories between your local workstation and the OCI VM via Syncthing, see [docs/syncthing.md](syncthing.md).
+
+Quick status verification on the VM:
+```sh
+systemctl status syncthing@hermes
+```
+
 ## Verification
 
 - `curl -s https://hermes-oci.<tailnet>.ts.net/api/status | jq '.auth_required, .auth_providers'`
   → `true`, `["basic"]`
 - Dashboard loads, Chat tab streams the embedded TUI
-- `systemctl is-active hermes-dashboard hermes-gateway hermes-backup.timer hermes-git-mirror.timer hermes-backup-check.timer`
+- `systemctl is-active hermes-dashboard hermes-gateway hermes-backup.timer hermes-git-mirror.timer hermes-backup-check.timer syncthing@hermes`
 - `hermes doctor` clean (`/var/log/hermes-doctor.log` on the VM)
 - `hermes mcp test playwright` and `hermes mcp test github` both connect
 - `hermes prompt-size` within your token budget

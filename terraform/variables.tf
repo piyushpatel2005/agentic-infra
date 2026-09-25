@@ -109,13 +109,22 @@ variable "data_volume_device" {
 }
 
 variable "dashboard_basic_auth_secret_ocid" {
-  description = "OCID of the Vault secret holding {username,password,secret} JSON for the dashboard basic-auth provider, created out-of-band by scripts/bootstrap-secrets.sh."
+  description = "OCID of the Vault secret holding {username,password,secret} JSON for the dashboard basic-auth provider. Optional; leave empty to auto-generate credentials."
   type        = string
+  default     = ""
+}
+
+variable "tailscale_auth_key" {
+  description = "Tailscale pre-auth key (e.g. tskey-auth-...). If provided, the VM automatically joins Tailnet on first boot with Tailscale SSH enabled."
+  type        = string
+  default     = ""
+  sensitive   = true
 }
 
 variable "tailscale_authkey_secret_ocid" {
-  description = "OCID of the Vault secret holding an ephemeral Tailscale pre-auth key, created out-of-band by scripts/bootstrap-secrets.sh."
+  description = "OCID of the Vault secret holding an ephemeral Tailscale pre-auth key. (Alternative to tailscale_auth_key)."
   type        = string
+  default     = ""
 }
 
 variable "nvidia_nim_base_url" {
