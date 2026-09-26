@@ -80,7 +80,19 @@ brew services start syncthing
 To prevent macOS-specific binaries, socket files, or active database locks from clobbering Linux binaries on OCI, ensure both machines have identical `.stignore` files in their respective `~/.hermes/` roots.
 
 ```text
-// 1. Never sync lock files, sockets, PIDs, or active SQLite DBs (causes conflicts)
+// 1. WHITELIST FIRST: un-ignore skills, profiles, memories, sessions everywhere
+!skills
+!skills/**
+!profiles
+!profiles/**
+!memories
+!memories/**
+!sessions
+!sessions/**
+!SOUL.md
+!active_profile
+
+// 2. Never sync lock files, sockets, PIDs, SQLite WALs, or conflict duplicates
 (?d)*.lock
 (?d)*.sock
 (?d)*.pid
@@ -89,7 +101,7 @@ To prevent macOS-specific binaries, socket files, or active database locks from 
 (?d)*.db-wal
 (?d)*.sync-conflict-*
 
-// 2. Never sync machine-specific runtimes, tools, caches, backups, or logs
+// 3. Never sync caches, logs, backups, or machine-specific runtimes
 (?d)cache
 (?d)audio_cache
 (?d)image_cache
@@ -116,18 +128,6 @@ To prevent macOS-specific binaries, socket files, or active database locks from 
 (?d)processes.json
 (?d)spawn-ledger.json
 (?d)gateway*
-
-// 3. WHITELIST: Only sync skills, profiles, memories, sessions, and persona
-!/skills
-!/skills/**
-!/profiles
-!/profiles/**
-!/memories
-!/memories/**
-!/sessions
-!/sessions/**
-!/SOUL.md
-!/active_profile
 
 // 4. Ignore all other root files (.env, auth.json, internal databases)
 *
