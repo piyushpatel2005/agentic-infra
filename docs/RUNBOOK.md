@@ -289,6 +289,14 @@ cd terraform/bootstrap
 terraform destroy
 ```
 
+## Remote file access & IDE integration (VS Code / Antigravity)
+
+To view, browse, search, and edit remote files directly inside your local editor (VS Code, Antigravity) over Tailscale SSH, see [docs/remote-access.md](remote-access.md).
+
+## Autonomous GitHub Issue/PR Webhook Workflows
+
+To configure GitHub webhooks that trigger Hermes to automatically diagnose issues, create fix branches, and submit Pull Requests, see [docs/github-pr-automation.md](github-pr-automation.md).
+
 ## Multi-device sync (macOS <-> OCI VM)
 
 For real-time bidirectional synchronization of skills, profiles, sessions, and memories between your local workstation and the OCI VM via Syncthing, see [docs/syncthing.md](syncthing.md).

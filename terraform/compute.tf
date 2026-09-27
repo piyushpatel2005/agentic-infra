@@ -69,6 +69,8 @@ resource "oci_core_instance" "hermes" {
         git_mirror_timer_unit            = file("${path.module}/../systemd/hermes-git-mirror.timer")
         backup_check_service_unit        = file("${path.module}/../systemd/hermes-backup-check.service")
         backup_check_timer_unit          = file("${path.module}/../systemd/hermes-backup-check.timer")
+        hermes_webhook_script            = file("${path.module}/../scripts/hermes-github-webhook.py")
+        hermes_webhook_service_unit      = file("${path.module}/../systemd/hermes-github-webhook.service")
         hermes_user                      = var.hermes_user
         data_volume_device               = var.data_volume_device
         swap_size_gb                     = var.swap_size_gb

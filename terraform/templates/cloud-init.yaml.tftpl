@@ -122,5 +122,15 @@ write_files:
     content: |
       ${indent(6, backup_check_timer_unit)}
 
+  - path: /home/hermes/scripts/hermes-github-webhook.py
+    permissions: '0755'
+    content: |
+      ${indent(6, hermes_webhook_script)}
+
+  - path: /etc/systemd/system/hermes-github-webhook.service
+    permissions: '0644'
+    content: |
+      ${indent(6, hermes_webhook_service_unit)}
+
 runcmd:
   - [bash, /root/bootstrap.sh]

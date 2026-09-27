@@ -1,0 +1,17 @@
+[Unit]
+Description=Hermes GitHub Webhook Listener
+After=network.target tailscaled.service
+
+[Service]
+Type=simple
+User=hermes
+Group=hermes
+WorkingDirectory=/home/hermes
+Environment=PATH=/home/hermes/.local/bin:/home/hermes/.hermes/hermes-agent/venv/bin:/home/hermes/.hermes/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+EnvironmentFile=-/home/hermes/.hermes/.env
+ExecStart=/usr/bin/python3 /home/hermes/scripts/hermes-github-webhook.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

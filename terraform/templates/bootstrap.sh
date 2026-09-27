@@ -259,6 +259,7 @@ chmod 600 "${MOUNT_POINT}/.hermes/.env"
 systemctl daemon-reload
 systemctl enable --now hermes-dashboard.service
 systemctl enable hermes-gateway.service # left stopped until a platform token is configured
+systemctl enable hermes-github-webhook.service # started if webhook secret configured
 systemctl enable --now hermes-backup.timer
 systemctl enable --now hermes-git-mirror.timer
 systemctl enable --now hermes-backup-check.timer
