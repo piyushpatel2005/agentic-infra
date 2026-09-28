@@ -306,6 +306,10 @@ Quick status verification on the VM:
 systemctl status syncthing@hermes
 ```
 
+## Paperclip & K–12 Student Learning Platform
+
+To install and configure Paperclip alongside a dedicated Hermes profile (`k12-curriculum`) for generating interactive JK–K12 Math, Science, and English curriculum, see [docs/paperclip-curriculum-guide.md](paperclip-curriculum-guide.md).
+
 ## Verification
 
 - `curl -s https://hermes-oci.<tailnet>.ts.net/api/status | jq '.auth_required, .auth_providers'`
