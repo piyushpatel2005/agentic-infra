@@ -64,7 +64,6 @@ ARG_TELEGRAM_USERS=""
 ARG_DEFAULT_PROVIDER=""
 ARG_DEFAULT_MODEL=""
 ARG_SKILLS=""
-ARG_ENABLE_SYNCTHING=""
 NON_INTERACTIVE=false
 
 while [ $# -gt 0 ]; do
@@ -76,8 +75,6 @@ while [ $# -gt 0 ]; do
     --default-provider) ARG_DEFAULT_PROVIDER="$2"; shift 2 ;;
     --default-model) ARG_DEFAULT_MODEL="$2"; shift 2 ;;
     --skills) ARG_SKILLS="$2"; shift 2 ;;
-    --enable-syncthing) ARG_ENABLE_SYNCTHING=true; shift 1 ;;
-    --skip-syncthing) ARG_ENABLE_SYNCTHING=false; shift 1 ;;
     --non-interactive|-y) NON_INTERACTIVE=true; shift 1 ;;
     -h|--help)
       cat <<'EOF'
@@ -90,9 +87,7 @@ Options:
   --telegram-users <ids>     Allowed Telegram User IDs (comma-separated)
   --default-provider <prov>  Default provider (openrouter, nvidia_nim)
   --default-model <model>    Default model identifier (e.g. openrouter/auto)
-  --skills <skills_list>     Comma-separated list of skills to install (optional; syncs via Syncthing)
-  --enable-syncthing         Install and enable Syncthing service for peer-to-peer sync
-  --skip-syncthing           Skip Syncthing installation and configuration
+  --skills <skills_list>     Comma-separated list of skills to install
   --non-interactive, -y      Skip interactive prompts and use provided arguments
   -h, --help                 Show this help message
 EOF
@@ -233,7 +228,6 @@ skills_to_install="$ARG_SKILLS"
 if [ "$NON_INTERACTIVE" = false ]; then
   echo ""
   echo "--- Skill Installation ---"
-  echo "Note: If you are using Syncthing, your skills will sync automatically from your Mac."
   read -r -p "Enter skills to install (comma-separated, or press Enter to skip): " input_skills
   [ -n "$input_skills" ] && skills_to_install="$input_skills"
 fi
@@ -252,100 +246,7 @@ if [ -n "$skills_to_install" ]; then
     fi
   done
 else
-  log "Skipping skill installation (will sync via Syncthing / local skills)."
-fi
-
-# ------------------------------------------------------------
-# 4. Multi-Device Sync (Syncthing)
-# ------------------------------------------------------------
-log "Step 4: Configuring Multi-Device Sync (Syncthing)..."
-
-setup_syncthing="$ARG_ENABLE_SYNCTHING"
-if [ "$NON_INTERACTIVE" = false ] && [ -z "$setup_syncthing" ]; then
-  echo ""
-  echo "--- Peer-to-Peer Sync (Syncthing) ---"
-  echo "Syncs skills, profiles, sessions, and memories between your local Mac and OCI."
-  read -r -p "Enable Syncthing daemon for ${HERMES_USER_NAME}? [Y/n]: " input_sync
-  if [[ "$input_sync" =~ ^[Nn] ]]; then
-    setup_syncthing=false
-  else
-    setup_syncthing=true
-  fi
-fi
-
-syncthing_device_id=""
-if [ "$setup_syncthing" = true ]; then
-  if ! command -v syncthing >/dev/null 2>&1; then
-    log "Installing syncthing package via apt..."
-    run_as_root "apt-get update -qq && apt-get install -y -qq syncthing"
-  fi
-
-  # Create default .stignore in ~/.hermes if not present
-  STIGNORE_FILE="${HERMES_DIR}/.stignore"
-  if [ ! -f "$STIGNORE_FILE" ]; then
-    log "Creating default ignore list (${STIGNORE_FILE})..."
-    cat >"$STIGNORE_FILE" <<'STIGNORE'
-// 1. WHITELIST FIRST: un-ignore skills, profiles, memories, sessions everywhere
-!skills
-!skills/**
-!profiles
-!profiles/**
-!memories
-!memories/**
-!sessions
-!sessions/**
-!SOUL.md
-!active_profile
-
-// 2. Never sync lock files, sockets, PIDs, SQLite WALs, or conflict duplicates
-(?d)*.lock
-(?d)*.sock
-(?d)*.pid
-(?d)*.db
-(?d)*.db-shm
-(?d)*.db-wal
-(?d)*.sync-conflict-*
-
-// 3. Never sync caches, logs, backups, or machine-specific runtimes
-(?d)cache
-(?d)audio_cache
-(?d)image_cache
-(?d)logs
-(?d)*.log
-(?d)backups
-(?d).curator_backups
-(?d)tools
-(?d)environments
-(?d)installs
-(?d)source-checks
-(?d)plugin-update-checks
-(?d)terminal-sessions
-(?d)hermes-agent
-(?d)bin
-(?d)node
-(?d)runtime
-(?d)sandboxes
-(?d)desktop
-(?d)desktop-plugins
-(?d)models_dev_cache.*
-(?d)provider_models_cache.json
-(?d)context_length_cache.yaml
-(?d)processes.json
-(?d)spawn-ledger.json
-(?d)gateway*
-
-// 4. Ignore all other root files (.env, auth.json, internal databases)
-*
-STIGNORE
-  fi
-
-  log "Enabling and starting syncthing@${HERMES_USER_NAME}.service..."
-  run_as_root "systemctl enable --now syncthing@${HERMES_USER_NAME}.service 2>/dev/null || true"
-  run_as_root "systemctl restart syncthing@${HERMES_USER_NAME}.service 2>/dev/null || true"
-
-  # Allow service a moment to initialize device keys
-  sleep 2
-  syncthing_device_id=$(run_as_hermes "syncthing --device-id 2>/dev/null" || true)
+  log "Skipping skill installation."
 fi
 
 # ------------------------------------------------------------
@@ -388,10 +289,5 @@ echo " - Environment: ${ENV_FILE}"
 echo " - Skills: $(run_as_hermes "hermes skill list 2>/dev/null || hermes skills list 2>/dev/null || echo 'Checked'")"
 if [ -n "$tg_token" ]; then
   echo " - Telegram Gateway: Active (Allowed Users: ${tg_users:-all})"
-fi
-if [ "$setup_syncthing" = true ]; then
-  echo " - Syncthing: Active (Service: syncthing@${HERMES_USER_NAME}.service)"
-  [ -n "$syncthing_device_id" ] && echo "   Device ID: ${syncthing_device_id}"
-  echo "   Documentation: see docs/syncthing.md for pairing steps."
 fi
 echo ""

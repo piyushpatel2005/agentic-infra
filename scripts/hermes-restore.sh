@@ -8,6 +8,8 @@
 # temporarily (never store it on the VM permanently — see PLAN.md §4).
 set -euo pipefail
 
+export PATH="/opt/oci-cli-env/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
 usage() {
   echo "Usage: hermes-restore.sh --bucket <name> --identity <age-identity-file> [--object <daily/hermes-home/hermes-backup-<ts>.zip.age>]" >&2
   exit 1

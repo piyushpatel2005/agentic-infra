@@ -72,17 +72,7 @@ Once connected, click **Open Folder** in the Explorer sidebar:
 
 ---
 
-## Method 2: Real-Time Sync to a Local Folder (Syncthing)
-
-If you prefer having physical copies of skills, memories, sessions, and persona files stored locally on your machine, use **Syncthing**.
-
-1. **How It Works**: The VM automatically runs Syncthing (`syncthing@hermes.service`), configured to securely sync `skills/`, `profiles/`, `memories/`, `sessions/`, and `SOUL.md` over Tailscale.
-2. **Setup**: Follow the full configuration guide in [docs/syncthing.md](syncthing.md) to pair your local machine with the OCI VM.
-3. **Usage**: Open the synced local folder (e.g., `~/.hermes/` or `C:\Users\<user>\.hermes`) directly in your local editor. Changes made on the server will automatically sync down to your local disk within seconds.
-
----
-
-## Method 3: Quick CLI File Inspection (SSH Terminal)
+## Method 2: Quick CLI File Inspection (SSH Terminal)
 
 For quick file inspection without opening a full remote IDE session:
 
@@ -91,8 +81,8 @@ For quick file inspection without opening a full remote IDE session:
 # Follow live Telegram gateway logs
 journalctl -u hermes-gateway.service -f
 
-# Follow live Syncthing logs
-journalctl -u syncthing@hermes.service -f
+# Follow live Webhook service logs
+journalctl -u hermes-github-webhook.service -f
 ```
 
 ### Inspect Recent Sessions & Memories
@@ -124,6 +114,6 @@ nano ~/.hermes/config.yaml
 
 ## See Also
 
-- [docs/syncthing.md](syncthing.md) — Real-time bidirectional file sync between local workstations and OCI VM.
+- [docs/jupyterlab.md](jupyterlab.md) — Dedicated JupyterLab exploration environment.
 - [docs/channels.md](channels.md) — Telegram and messaging integrations.
 - [docs/RUNBOOK.md](RUNBOOK.md) — Day-2 operations, backups, and provider rotation.

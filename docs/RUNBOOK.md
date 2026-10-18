@@ -113,7 +113,7 @@ for design rationale and [README.md](../README.md) for repo layout.
    ```sh
    ssh hermes@hermes-oci
    ```
-   Run the interactive setup helper to configure model API keys (OpenRouter, NVIDIA NIM), Telegram integration, and Syncthing peer-to-peer sync:
+   Run the interactive setup helper to configure model API keys (OpenRouter, NVIDIA NIM) and Telegram integration:
    ```sh
    sudo /usr/local/bin/hermes-setup.sh
    ```
@@ -297,25 +297,21 @@ To view, browse, search, and edit remote files directly inside your local editor
 
 To configure GitHub webhooks that trigger Hermes to automatically diagnose issues, create fix branches, and submit Pull Requests, see [docs/github-pr-automation.md](github-pr-automation.md).
 
-## Multi-device sync (macOS <-> OCI VM)
+## JupyterLab Exploration Environment
 
-For real-time bidirectional synchronization of skills, profiles, sessions, and memories between your local workstation and the OCI VM via Syncthing, see [docs/syncthing.md](syncthing.md).
+To install, configure, and access the dedicated JupyterLab interactive exploration environment on `hermes-oci`, see [docs/jupyterlab.md](jupyterlab.md).
 
 Quick status verification on the VM:
 ```sh
-systemctl status syncthing@hermes
+systemctl status jupyterlab.service
 ```
-
-## Paperclip & K–12 Student Learning Platform
-
-To install and configure Paperclip alongside a dedicated Hermes profile (`k12-curriculum`) for generating interactive JK–K12 Math, Science, and English curriculum, see [docs/paperclip-curriculum-guide.md](paperclip-curriculum-guide.md).
 
 ## Verification
 
 - `curl -s https://hermes-oci.<tailnet>.ts.net/api/status | jq '.auth_required, .auth_providers'`
   → `true`, `["basic"]`
 - Dashboard loads, Chat tab streams the embedded TUI
-- `systemctl is-active hermes-dashboard hermes-gateway hermes-backup.timer hermes-git-mirror.timer hermes-backup-check.timer syncthing@hermes`
+- `systemctl is-active hermes-dashboard hermes-gateway hermes-backup.timer hermes-git-mirror.timer hermes-backup-check.timer`
 - `hermes doctor` clean (`/var/log/hermes-doctor.log` on the VM)
 - `hermes mcp test playwright` and `hermes mcp test github` both connect
 - `hermes prompt-size` within your token budget

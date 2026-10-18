@@ -71,6 +71,8 @@ resource "oci_core_instance" "hermes" {
         backup_check_timer_unit          = file("${path.module}/../systemd/hermes-backup-check.timer")
         hermes_webhook_script            = file("${path.module}/../scripts/hermes-github-webhook.py")
         hermes_webhook_service_unit      = file("${path.module}/../systemd/hermes-github-webhook.service")
+        jupyter_setup_script             = file("${path.module}/../scripts/jupyter-setup.sh")
+        jupyterlab_service_unit          = file("${path.module}/../systemd/jupyterlab.service")
         hermes_user                      = var.hermes_user
         data_volume_device               = var.data_volume_device
         swap_size_gb                     = var.swap_size_gb

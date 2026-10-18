@@ -16,7 +16,6 @@ packages:
   - cron
   - nodejs
   - npm
-  - syncthing
 
 write_files:
   - path: /etc/hermes/bootstrap.env
@@ -131,6 +130,16 @@ write_files:
     permissions: '0644'
     content: |
       ${indent(6, hermes_webhook_service_unit)}
+
+  - path: /usr/local/bin/jupyter-setup.sh
+    permissions: '0755'
+    content: |
+      ${indent(6, jupyter_setup_script)}
+
+  - path: /etc/systemd/system/jupyterlab.service
+    permissions: '0644'
+    content: |
+      ${indent(6, jupyterlab_service_unit)}
 
 runcmd:
   - [bash, /root/bootstrap.sh]

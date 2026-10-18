@@ -4,6 +4,8 @@
 # Notifications message. Run periodically (see systemd/hermes-backup-check.timer).
 set -euo pipefail
 
+export PATH="/opt/oci-cli-env/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
 log() { echo "[backup-check] $*"; }
 
 # shellcheck source=/dev/null
@@ -12,6 +14,11 @@ log() { echo "[backup-check] $*"; }
 BUCKET="${HERMES_BACKUP_BUCKET:?HERMES_BACKUP_BUCKET not set in /etc/hermes/backup.env}"
 TOPIC_ID="${HERMES_ALERTS_TOPIC_OCID:?HERMES_ALERTS_TOPIC_OCID not set}"
 STALE_AFTER_HOURS="${HERMES_BACKUP_STALE_AFTER_HOURS:-36}"
+
+if ! command -v oci >/dev/null 2>&1; then
+  echo "error: 'oci' CLI command not found in PATH ($PATH)" >&2
+  exit 1
+fi
 
 tmp_file=$(mktemp)
 trap 'rm -f "$tmp_file"' EXIT

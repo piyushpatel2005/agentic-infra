@@ -74,12 +74,10 @@ iptables -C INPUT -i lo -p tcp --dport 9119 -j ACCEPT 2>/dev/null ||
   iptables -I INPUT -i lo -p tcp --dport 9119 -j ACCEPT
 iptables -C INPUT -i tailscale0 -p tcp --dport 9119 -j ACCEPT 2>/dev/null ||
   iptables -I INPUT -i tailscale0 -p tcp --dport 9119 -j ACCEPT
-iptables -C INPUT -i tailscale0 -p tcp --dport 8384 -j ACCEPT 2>/dev/null ||
-  iptables -I INPUT -i tailscale0 -p tcp --dport 8384 -j ACCEPT
-iptables -C INPUT -i tailscale0 -p tcp --dport 22000 -j ACCEPT 2>/dev/null ||
-  iptables -I INPUT -i tailscale0 -p tcp --dport 22000 -j ACCEPT
-iptables -C INPUT -i tailscale0 -p udp --dport 22000 -j ACCEPT 2>/dev/null ||
-  iptables -I INPUT -i tailscale0 -p udp --dport 22000 -j ACCEPT
+iptables -C INPUT -i lo -p tcp --dport 8888 -j ACCEPT 2>/dev/null ||
+  iptables -I INPUT -i lo -p tcp --dport 8888 -j ACCEPT
+iptables -C INPUT -i tailscale0 -p tcp --dport 8888 -j ACCEPT 2>/dev/null ||
+  iptables -I INPUT -i tailscale0 -p tcp --dport 8888 -j ACCEPT
 netfilter-persistent save
 
 # --- 5. Install Hermes Agent as the service user (own browser tooling set up in step 9) ---
@@ -112,11 +110,11 @@ log "fetching secrets from Vault"
 # (pip3 install --break-system-packages fails because urllib3 has no RECORD file).
 # python3-venv is not included in the OCI Ubuntu 24.04 image by default.
 apt-get install -y -qq python3-venv
-# --- 6. Best-effort Vault secrets & credentials ---
 log "checking for Vault secrets..."
 apt-get install -y -qq python3-venv 2>/dev/null || true
 python3 -m venv /opt/oci-cli-env 2>/dev/null || true
 /opt/oci-cli-env/bin/pip install --quiet oci-cli 2>/dev/null || true
+ln -sf /opt/oci-cli-env/bin/oci /usr/local/bin/oci 2>/dev/null || true
 
 fetch_secret() {
   local secret_id="$1"
@@ -260,73 +258,16 @@ systemctl daemon-reload
 systemctl enable --now hermes-dashboard.service
 systemctl enable hermes-gateway.service # left stopped until a platform token is configured
 systemctl enable hermes-github-webhook.service # started if webhook secret configured
-systemctl enable --now hermes-backup.timer
 systemctl enable --now hermes-git-mirror.timer
-systemctl enable --now hermes-backup-check.timer
+# Backup service and freshness timers are disabled by default on instance launch.
+# To enable manually: systemctl enable --now hermes-backup.timer hermes-backup-check.timer
+# systemctl enable --now hermes-backup.timer
+# systemctl enable --now hermes-backup-check.timer
 
-# Enable syncthing service for multi-device profile/skill sync
-if command -v syncthing >/dev/null 2>&1; then
-  log "enabling syncthing service for ${HERMES_USER_NAME}"
-  systemctl enable --now "syncthing@${HERMES_USER_NAME}.service" 2>/dev/null || true
-
-  # Pre-configure .stignore for ~/.hermes if not present
-  if [ ! -f "${MOUNT_POINT}/.hermes/.stignore" ]; then
-    cat >"${MOUNT_POINT}/.hermes/.stignore" <<'STIGNORE'
-// 1. WHITELIST FIRST: un-ignore skills, profiles, memories, sessions everywhere
-!skills
-!skills/**
-!profiles
-!profiles/**
-!memories
-!memories/**
-!sessions
-!sessions/**
-!SOUL.md
-!active_profile
-
-// 2. Never sync lock files, sockets, PIDs, SQLite WALs, or conflict duplicates
-(?d)*.lock
-(?d)*.sock
-(?d)*.pid
-(?d)*.db
-(?d)*.db-shm
-(?d)*.db-wal
-(?d)*.sync-conflict-*
-
-// 3. Never sync caches, logs, backups, or machine-specific runtimes
-(?d)cache
-(?d)audio_cache
-(?d)image_cache
-(?d)logs
-(?d)*.log
-(?d)backups
-(?d).curator_backups
-(?d)tools
-(?d)environments
-(?d)installs
-(?d)source-checks
-(?d)plugin-update-checks
-(?d)terminal-sessions
-(?d)hermes-agent
-(?d)bin
-(?d)node
-(?d)runtime
-(?d)sandboxes
-(?d)desktop
-(?d)desktop-plugins
-(?d)models_dev_cache.*
-(?d)provider_models_cache.json
-(?d)context_length_cache.yaml
-(?d)processes.json
-(?d)spawn-ledger.json
-(?d)gateway*
-
-// 4. Ignore all other root files (.env, auth.json, internal databases)
-*
-STIGNORE
-    chown "${HERMES_USER_NAME}:${HERMES_USER_NAME}" "${MOUNT_POINT}/.hermes/.stignore"
-    chmod 644 "${MOUNT_POINT}/.hermes/.stignore"
-  fi
+# Provision JupyterLab exploration environment (installs packages and configures service; does not start it)
+if [ -f /usr/local/bin/jupyter-setup.sh ]; then
+  log "provisioning JupyterLab exploration environment"
+  /usr/local/bin/jupyter-setup.sh || true
 fi
 
 # Pick up /etc/cron.d/hermes-rotate-provider without waiting for the daemon's own rescan.

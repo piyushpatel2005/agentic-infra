@@ -6,6 +6,8 @@
 # hermes-backup.timer (see systemd/hermes-backup.{service,timer}).
 set -euo pipefail
 
+export PATH="/opt/oci-cli-env/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+
 log() { echo "[hermes-backup] $*"; }
 
 # shellcheck source=/dev/null
@@ -16,6 +18,22 @@ BUCKET="${HERMES_BACKUP_BUCKET:?HERMES_BACKUP_BUCKET not set in /etc/hermes/back
 AGE_RECIPIENT="${HERMES_BACKUP_AGE_RECIPIENT:?HERMES_BACKUP_AGE_RECIPIENT not set}"
 WORKSPACE_DIR="${HERMES_WORKSPACE_DIR:-/home/${HERMES_USER_NAME}/workspace}"
 MAX_BUCKET_BYTES=$((15 * 1024 * 1024 * 1024)) # soft cap; bucket allotment is 20 GiB
+
+# Validate tools and keys early
+if ! command -v oci >/dev/null 2>&1; then
+  echo "error: 'oci' CLI command not found in PATH ($PATH)" >&2
+  exit 1
+fi
+
+if ! command -v age >/dev/null 2>&1; then
+  echo "error: 'age' command not found in PATH ($PATH)" >&2
+  exit 1
+fi
+
+if [[ "$AGE_RECIPIENT" == *"replace-with-your-age-public-key"* ]] || [[ ! "$AGE_RECIPIENT" =~ ^age1 ]]; then
+  echo "error: HERMES_BACKUP_AGE_RECIPIENT ('$AGE_RECIPIENT') in /etc/hermes/backup.env is not a valid age public key" >&2
+  exit 1
+fi
 
 ts=$(date -u +%Y%m%dT%H%M%SZ)
 tmp_dir=$(mktemp -d)
