@@ -211,6 +211,5 @@ Options:
 
 ## See Also
 
-* [docs/jupyterlab.md](jupyterlab.md) — Standalone JupyterLab reference (optional daemon).
 * [docs/channels.md](channels.md) — Telegram and messaging integrations.
 * [docs/RUNBOOK.md](RUNBOOK.md) — Day-2 operations, backups, and provider rotation.

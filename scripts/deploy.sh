@@ -83,7 +83,6 @@ if [ "$DO_SYNC_ALL" = true ]; then
   scp "${REPO_ROOT}/scripts/hermes-github-webhook.py" "${REMOTE_HOST}:/home/hermes/scripts/hermes-github-webhook.py"
   scp "${REPO_ROOT}/scripts/hermes-setup.sh" "${REMOTE_HOST}:/tmp/hermes-setup.sh"
   scp "${REPO_ROOT}/scripts/vscode-setup.sh" "${REMOTE_HOST}:/tmp/vscode-setup.sh"
-  scp "${REPO_ROOT}/scripts/jupyter-setup.sh" "${REMOTE_HOST}:/tmp/jupyter-setup.sh"
   scp "${REPO_ROOT}/scripts/hermes-backup.sh" "${REMOTE_HOST}:/tmp/hermes-backup.sh"
   scp "${REPO_ROOT}/scripts/git-mirror.sh" "${REMOTE_HOST}:/tmp/git-mirror.sh"
   scp "${REPO_ROOT}/scripts/check-backup-freshness.sh" "${REMOTE_HOST}:/tmp/check-backup-freshness.sh"
@@ -95,7 +94,7 @@ if [ "$DO_SYNC_ALL" = true ]; then
   ssh -t "${REMOTE_HOST}" "
     chmod +x /home/hermes/scripts/*.py 2>/dev/null || true
     sudo cp /tmp/hermes-setup.sh /usr/local/bin/hermes-setup.sh
-    sudo cp /tmp/jupyter-setup.sh /usr/local/bin/jupyter-setup.sh
+    sudo cp /tmp/vscode-setup.sh /usr/local/bin/vscode-setup.sh
     sudo cp /tmp/hermes-backup.sh /usr/local/bin/hermes-backup.sh
     sudo cp /tmp/git-mirror.sh /usr/local/bin/git-mirror.sh
     sudo cp /tmp/check-backup-freshness.sh /usr/local/bin/check-backup-freshness.sh
@@ -139,7 +138,7 @@ if [ "$DO_CHECK_STATUS" = true ]; then
     systemctl is-active hermes-github-webhook.service >/dev/null && echo '✓ hermes-github-webhook.service : ACTIVE' || echo '- hermes-github-webhook.service : INACTIVE (Run sudo systemctl enable --now hermes-github-webhook.service)'
     systemctl is-active hermes-dashboard.service >/dev/null && echo '✓ hermes-dashboard.service      : ACTIVE' || echo '✗ hermes-dashboard.service      : INACTIVE'
     systemctl is-active hermes-gateway.service >/dev/null && echo '✓ hermes-gateway.service        : ACTIVE' || echo '- hermes-gateway.service        : STOPPED (Telegram)'
-    systemctl is-active jupyterlab.service >/dev/null && echo '✓ jupyterlab.service             : ACTIVE' || echo '- jupyterlab.service             : INACTIVE (Run sudo systemctl enable --now jupyterlab.service)'
+    systemctl is-active code-server.service >/dev/null && echo '✓ code-server.service           : ACTIVE (Port 8443)' || echo '✗ code-server.service           : INACTIVE'
   "
 fi
 

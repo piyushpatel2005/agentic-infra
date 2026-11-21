@@ -302,15 +302,6 @@ Quick status verification on the VM:
 systemctl status code-server.service
 ```
 
-## JupyterLab Exploration Environment
-
-The exploration Python virtual environment (`/opt/jupyter-env`) provides data science libraries and Jupyter kernels for VS Code. The standalone JupyterLab web daemon is optional and disabled by default. If you wish to run the standalone web UI, see [docs/jupyterlab.md](jupyterlab.md).
-
-Quick status verification on the VM:
-```sh
-systemctl status jupyterlab.service
-```
-
 ## Verification
 
 - `curl -s https://hermes-oci.<tailnet>.ts.net/api/status | jq '.auth_required, .auth_providers'`

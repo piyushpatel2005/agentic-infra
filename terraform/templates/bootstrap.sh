@@ -271,12 +271,6 @@ if [ -f /usr/local/bin/vscode-setup.sh ]; then
   /usr/local/bin/vscode-setup.sh --start || true
 fi
 
-# Provision data exploration environment (JupyterLab service remains disabled by default)
-if [ -f /usr/local/bin/jupyter-setup.sh ]; then
-  log "provisioning data science exploration environment"
-  /usr/local/bin/jupyter-setup.sh || true
-fi
-
 # --- 12. OS hardening: unattended security upgrades, logrotate, fail2ban ---
 log "configuring unattended-upgrades, logrotate, and fail2ban"
 apt-get install -y -qq unattended-upgrades fail2ban python3-systemd

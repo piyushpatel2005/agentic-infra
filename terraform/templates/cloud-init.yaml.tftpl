@@ -131,15 +131,5 @@ write_files:
     content: |
       ${indent(6, code_server_service_unit)}
 
-  - path: /usr/local/bin/jupyter-setup.sh
-    permissions: '0755'
-    content: |
-      ${indent(6, jupyter_setup_script)}
-
-  - path: /etc/systemd/system/jupyterlab.service
-    permissions: '0644'
-    content: |
-      ${indent(6, jupyterlab_service_unit)}
-
 runcmd:
   - [bash, /root/bootstrap.sh]
