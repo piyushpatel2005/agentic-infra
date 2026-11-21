@@ -58,8 +58,6 @@ resource "oci_core_instance" "hermes" {
         })
         dashboard_service_unit           = file("${path.module}/../systemd/hermes-dashboard.service")
         gateway_service_unit             = file("${path.module}/../systemd/hermes-gateway.service")
-        rotate_provider_script           = file("${path.module}/../scripts/rotate-provider.sh")
-        rotate_provider_cron             = file("${path.module}/../cron/hermes-rotate-provider.cron")
         hermes_backup_script             = file("${path.module}/../scripts/hermes-backup.sh")
         git_mirror_script                = file("${path.module}/../scripts/git-mirror.sh")
         backup_check_script              = file("${path.module}/../scripts/check-backup-freshness.sh")

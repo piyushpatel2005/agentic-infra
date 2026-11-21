@@ -244,9 +244,8 @@ MISTRAL_API_KEY=
 # github_pat_secret_ocid, or set it here directly).
 GITHUB_PERSONAL_ACCESS_TOKEN=${GITHUB_PAT}
 
-# provider:model pairs the 4-hourly cron (cron/hermes-rotate-provider.cron)
-# cycles the active model through. Edit freely; takes effect on the next run.
-HERMES_PROVIDER_ROTATION=${HERMES_PROVIDER_ROTATION}
+# Optional pool of provider:model pairs (rotation cron is disabled).
+# HERMES_PROVIDER_ROTATION=${HERMES_PROVIDER_ROTATION}
 EOF
 chown "$HERMES_USER_NAME":"$HERMES_USER_NAME" "${MOUNT_POINT}/.hermes/.env"
 chmod 600 "${MOUNT_POINT}/.hermes/.env"
@@ -275,9 +274,6 @@ if [ -f /usr/local/bin/jupyter-setup.sh ]; then
   log "provisioning data science exploration environment"
   /usr/local/bin/jupyter-setup.sh || true
 fi
-
-# Pick up /etc/cron.d/hermes-rotate-provider without waiting for the daemon's own rescan.
-systemctl restart cron
 
 # --- 12. OS hardening: unattended security upgrades, logrotate, fail2ban ---
 log "configuring unattended-upgrades, logrotate, and fail2ban"

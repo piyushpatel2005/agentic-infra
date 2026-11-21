@@ -135,7 +135,6 @@ If you prefer managing all credentials centrally in OCI Vault:
 
 ## Operational Details & Maintenance
 
-- **LLM Provider Rotation**: The 4-hourly model rotation script ([`scripts/rotate-provider.sh`](../scripts/rotate-provider.sh)) automatically restarts `hermes-gateway.service` so active Telegram sessions seamless update to the active LLM provider.
 - **Service Management Commands**:
   - **Restart Gateway**: `sudo systemctl restart hermes-gateway.service`
   - **Stop Gateway**: `sudo systemctl stop hermes-gateway.service`

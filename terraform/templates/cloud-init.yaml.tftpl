@@ -66,16 +66,6 @@ write_files:
     content: |
       ${indent(6, hermes_setup_script)}
 
-  - path: /usr/local/bin/rotate-provider.sh
-    permissions: '0755'
-    content: |
-      ${indent(6, rotate_provider_script)}
-
-  - path: /etc/cron.d/hermes-rotate-provider
-    permissions: '0644'
-    content: |
-      ${indent(6, rotate_provider_cron)}
-
   - path: /usr/local/bin/hermes-backup.sh
     permissions: '0700'
     content: |

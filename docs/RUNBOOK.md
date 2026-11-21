@@ -203,10 +203,6 @@ Changes take effect on the next session; restart the gateway for messaging platf
 sudo systemctl restart hermes-gateway.service
 ```
 
-The 4-hourly rotation (`/usr/local/bin/rotate-provider.sh`) will override this on its
-next tick — edit `HERMES_PROVIDER_ROTATION` in `~/.hermes/.env` to change the pool, or
-comment out the crontab entry in `/etc/cron.d/hermes-rotate-provider` to pause rotation.
-
 ## A1 "out of host capacity" errors
 
 Ampere A1 capacity is oversubscribed in some regions/availability domains. If

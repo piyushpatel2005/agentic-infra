@@ -84,7 +84,6 @@ if [ "$DO_SYNC_ALL" = true ]; then
   scp "${REPO_ROOT}/scripts/hermes-setup.sh" "${REMOTE_HOST}:/tmp/hermes-setup.sh"
   scp "${REPO_ROOT}/scripts/vscode-setup.sh" "${REMOTE_HOST}:/tmp/vscode-setup.sh"
   scp "${REPO_ROOT}/scripts/jupyter-setup.sh" "${REMOTE_HOST}:/tmp/jupyter-setup.sh"
-  scp "${REPO_ROOT}/scripts/rotate-provider.sh" "${REMOTE_HOST}:/tmp/rotate-provider.sh"
   scp "${REPO_ROOT}/scripts/hermes-backup.sh" "${REMOTE_HOST}:/tmp/hermes-backup.sh"
   scp "${REPO_ROOT}/scripts/git-mirror.sh" "${REMOTE_HOST}:/tmp/git-mirror.sh"
   scp "${REPO_ROOT}/scripts/check-backup-freshness.sh" "${REMOTE_HOST}:/tmp/check-backup-freshness.sh"
@@ -97,7 +96,6 @@ if [ "$DO_SYNC_ALL" = true ]; then
     chmod +x /home/hermes/scripts/*.py 2>/dev/null || true
     sudo cp /tmp/hermes-setup.sh /usr/local/bin/hermes-setup.sh
     sudo cp /tmp/jupyter-setup.sh /usr/local/bin/jupyter-setup.sh
-    sudo cp /tmp/rotate-provider.sh /usr/local/bin/rotate-provider.sh
     sudo cp /tmp/hermes-backup.sh /usr/local/bin/hermes-backup.sh
     sudo cp /tmp/git-mirror.sh /usr/local/bin/git-mirror.sh
     sudo cp /tmp/check-backup-freshness.sh /usr/local/bin/check-backup-freshness.sh
