@@ -256,7 +256,9 @@ chmod 600 "${MOUNT_POINT}/.hermes/.env"
 systemctl daemon-reload
 systemctl enable --now hermes-dashboard.service
 systemctl enable hermes-gateway.service # left stopped until a platform token is configured
-systemctl enable hermes-github-webhook.service # started if webhook secret configured
+# Webhook service for automatic PR creation is kept disabled by default on instance launch.
+# To enable manually: sudo systemctl enable --now hermes-github-webhook.service
+# systemctl enable hermes-github-webhook.service
 systemctl enable --now hermes-git-mirror.timer
 # Backup service and freshness timers are disabled by default on instance launch.
 # To enable manually: systemctl enable --now hermes-backup.timer hermes-backup-check.timer

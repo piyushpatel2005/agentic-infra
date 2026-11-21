@@ -14,7 +14,7 @@ set -euo pipefail
 REMOTE_HOST="hermes-oci"
 DO_SYNC_ALL=true
 DO_RUN_SETUP=false
-DO_RESTART_WEBHOOK=true
+DO_RESTART_WEBHOOK=false
 DO_CHECK_STATUS=true
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -30,7 +30,7 @@ while [[ $# -gt 0 ]]; do
     --webhook|-w)
       DO_SYNC_ALL=true
       DO_RUN_SETUP=false
-      DO_RESTART_WEBHOOK=true
+      DO_RESTART_WEBHOOK=false
       shift
       ;;
     --setup|-s)
@@ -42,7 +42,7 @@ while [[ $# -gt 0 ]]; do
     --all|-a)
       DO_SYNC_ALL=true
       DO_RUN_SETUP=true
-      DO_RESTART_WEBHOOK=true
+      DO_RESTART_WEBHOOK=false
       shift
       ;;
     --help)
@@ -136,7 +136,7 @@ if [ "$DO_CHECK_STATUS" = true ]; then
   echo ""
   echo "--- Active Services Status on ${REMOTE_HOST} ---"
   ssh "${REMOTE_HOST}" "
-    systemctl is-active hermes-github-webhook.service >/dev/null && echo '✓ hermes-github-webhook.service : ACTIVE' || echo '✗ hermes-github-webhook.service : INACTIVE'
+    systemctl is-active hermes-github-webhook.service >/dev/null && echo '✓ hermes-github-webhook.service : ACTIVE' || echo '- hermes-github-webhook.service : INACTIVE (Run sudo systemctl enable --now hermes-github-webhook.service)'
     systemctl is-active hermes-dashboard.service >/dev/null && echo '✓ hermes-dashboard.service      : ACTIVE' || echo '✗ hermes-dashboard.service      : INACTIVE'
     systemctl is-active hermes-gateway.service >/dev/null && echo '✓ hermes-gateway.service        : ACTIVE' || echo '- hermes-gateway.service        : STOPPED (Telegram)'
     systemctl is-active jupyterlab.service >/dev/null && echo '✓ jupyterlab.service             : ACTIVE' || echo '- jupyterlab.service             : INACTIVE (Run sudo systemctl enable --now jupyterlab.service)'
