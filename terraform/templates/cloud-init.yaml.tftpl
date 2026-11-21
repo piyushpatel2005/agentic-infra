@@ -131,6 +131,16 @@ write_files:
     content: |
       ${indent(6, hermes_webhook_service_unit)}
 
+  - path: /usr/local/bin/vscode-setup.sh
+    permissions: '0755'
+    content: |
+      ${indent(6, vscode_setup_script)}
+
+  - path: /etc/systemd/system/code-server.service
+    permissions: '0644'
+    content: |
+      ${indent(6, code_server_service_unit)}
+
   - path: /usr/local/bin/jupyter-setup.sh
     permissions: '0755'
     content: |

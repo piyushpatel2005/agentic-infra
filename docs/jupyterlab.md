@@ -1,5 +1,18 @@
 # JupyterLab Exploration Environment Guide
 
+> [!NOTE]
+> **JupyterLab is optional and disabled by default.**
+> With **Web VS Code (`code-server`)** running on port `8443` (see [docs/remote-access.md](remote-access.md)), you can view, edit, and execute Jupyter Notebooks (`.ipynb`) directly inside your browser or desktop VS Code interface.
+> 
+> The exploration virtual environment (`/opt/jupyter-env`) remains fully installed with numpy, pandas, matplotlib, seaborn, scipy, and ipykernel so it can be selected as a Python kernel inside VS Code.
+> 
+> If you still wish to run the standalone JupyterLab web daemon, you can start it at any time:
+> ```bash
+> sudo systemctl enable --now jupyterlab.service
+> sudo tailscale serve --bg --https=8888 http://127.0.0.1:8888
+> ```
+> *(To stop and disable it again: `sudo systemctl stop jupyterlab.service && sudo systemctl disable jupyterlab.service && sudo tailscale serve --https=8888 off`)*
+
 This guide provides instructions for installing, configuring, running, and accessing **JupyterLab** on your `hermes-oci` instance.
 
 The environment is designed for interactive Python exploration, data analysis, and prototyping with direct access to your persistent workspace (`/home/hermes/workspace`) on the 100 GB block volume.

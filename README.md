@@ -7,11 +7,12 @@ Tailscale, with encrypted backups to OCI Object Storage and an off-cloud GitHub 
 See [PLAN.md](PLAN.md) for the full design, decisions, and phased build-out,
 [docs/RUNBOOK.md](docs/RUNBOOK.md) for day-2 operations (deploy, restore drill, switch
 model/provider, teardown, free-tier usage audit), [docs/channels.md](docs/channels.md)
-for Telegram messaging setup, [docs/jupyterlab.md](docs/jupyterlab.md) for interactive
-JupyterLab exploration, [docs/remote-access.md](docs/remote-access.md) for viewing and editing
-remote files in VS Code / Antigravity, [docs/managing-repos.md](docs/managing-repos.md) for
-scoping and managing content repositories, and [docs/github-pr-automation.md](docs/github-pr-automation.md)
-for automated GitHub webhook bug-fixing and PR creation workflows.
+for Telegram messaging setup, [docs/remote-access.md](docs/remote-access.md) for browser-based
+Web VS Code on port 8443, VS Code Tunnels, and interactive Jupyter Notebook execution,
+[docs/jupyterlab.md](docs/jupyterlab.md) for standalone JupyterLab exploration (optional),
+[docs/managing-repos.md](docs/managing-repos.md) for scoping and managing content repositories,
+and [docs/github-pr-automation.md](docs/github-pr-automation.md) for automated GitHub webhook
+bug-fixing and PR creation workflows.
 
 ## Status
 

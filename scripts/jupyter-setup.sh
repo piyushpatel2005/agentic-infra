@@ -147,8 +147,8 @@ EOF
 
 systemctl daemon-reload
 
-# 6. Configure Tailscale Serve (if Tailscale is active)
-if command -v tailscale >/dev/null 2>&1; then
+# 6. Configure Tailscale Serve (if Tailscale is active and service was requested to start)
+if [ "$START_SERVICE" = true ] && command -v tailscale >/dev/null 2>&1; then
   log "Configuring Tailscale Serve for HTTPS access on port ${JUPYTER_PORT}..."
   # Clean up stale serve port 3100 if present
   tailscale serve --https=3100 off >/dev/null 2>&1 || true

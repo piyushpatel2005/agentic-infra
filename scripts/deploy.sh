@@ -82,6 +82,7 @@ if [ "$DO_SYNC_ALL" = true ]; then
   # Sync all executable scripts
   scp "${REPO_ROOT}/scripts/hermes-github-webhook.py" "${REMOTE_HOST}:/home/hermes/scripts/hermes-github-webhook.py"
   scp "${REPO_ROOT}/scripts/hermes-setup.sh" "${REMOTE_HOST}:/tmp/hermes-setup.sh"
+  scp "${REPO_ROOT}/scripts/vscode-setup.sh" "${REMOTE_HOST}:/tmp/vscode-setup.sh"
   scp "${REPO_ROOT}/scripts/jupyter-setup.sh" "${REMOTE_HOST}:/tmp/jupyter-setup.sh"
   scp "${REPO_ROOT}/scripts/rotate-provider.sh" "${REMOTE_HOST}:/tmp/rotate-provider.sh"
   scp "${REPO_ROOT}/scripts/hermes-backup.sh" "${REMOTE_HOST}:/tmp/hermes-backup.sh"

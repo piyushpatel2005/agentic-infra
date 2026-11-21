@@ -264,9 +264,15 @@ systemctl enable --now hermes-git-mirror.timer
 # systemctl enable --now hermes-backup.timer
 # systemctl enable --now hermes-backup-check.timer
 
-# Provision JupyterLab exploration environment (installs packages and configures service; does not start it)
+# Provision VS Code web server environment and start service
+if [ -f /usr/local/bin/vscode-setup.sh ]; then
+  log "provisioning VS Code server environment"
+  /usr/local/bin/vscode-setup.sh --start || true
+fi
+
+# Provision data exploration environment (JupyterLab service remains disabled by default)
 if [ -f /usr/local/bin/jupyter-setup.sh ]; then
-  log "provisioning JupyterLab exploration environment"
+  log "provisioning data science exploration environment"
   /usr/local/bin/jupyter-setup.sh || true
 fi
 

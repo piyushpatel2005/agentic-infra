@@ -297,9 +297,18 @@ To view, browse, search, and edit remote files directly inside your local editor
 
 To configure GitHub webhooks that trigger Hermes to automatically diagnose issues, create fix branches, and submit Pull Requests, see [docs/github-pr-automation.md](github-pr-automation.md).
 
+## VS Code Server & Remote Coding Environment
+
+To code from any device using browser-based **Web VS Code** on `https://hermes-oci.<tailnet>.ts.net:8443`, run VS Code Tunnels on `vscode.dev`, or connect via desktop Remote-SSH, see [docs/remote-access.md](remote-access.md).
+
+Quick status verification on the VM:
+```sh
+systemctl status code-server.service
+```
+
 ## JupyterLab Exploration Environment
 
-To install, configure, and access the dedicated JupyterLab interactive exploration environment on `hermes-oci`, see [docs/jupyterlab.md](jupyterlab.md).
+The exploration Python virtual environment (`/opt/jupyter-env`) provides data science libraries and Jupyter kernels for VS Code. The standalone JupyterLab web daemon is optional and disabled by default. If you wish to run the standalone web UI, see [docs/jupyterlab.md](jupyterlab.md).
 
 Quick status verification on the VM:
 ```sh
