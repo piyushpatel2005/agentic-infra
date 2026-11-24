@@ -16,6 +16,8 @@ packages:
   - cron
   - nodejs
   - npm
+  - docker.io
+  - docker-compose-v2
 
 write_files:
   - path: /etc/hermes/bootstrap.env
@@ -130,6 +132,16 @@ write_files:
     permissions: '0644'
     content: |
       ${indent(6, code_server_service_unit)}
+
+  - path: /usr/local/bin/piston-setup.sh
+    permissions: '0755'
+    content: |
+      ${indent(6, piston_setup_script)}
+
+  - path: /etc/systemd/system/piston.service
+    permissions: '0644'
+    content: |
+      ${indent(6, piston_service_unit)}
 
 runcmd:
   - [bash, /root/bootstrap.sh]

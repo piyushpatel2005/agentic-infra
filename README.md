@@ -10,8 +10,9 @@ model/provider, teardown, free-tier usage audit), [docs/channels.md](docs/channe
 for Telegram messaging setup, [docs/remote-access.md](docs/remote-access.md) for browser-based
 Web VS Code on port 8443, VS Code Tunnels, and interactive Jupyter Notebook execution,
 [docs/managing-repos.md](docs/managing-repos.md) for scoping and managing content repositories,
-and [docs/github-pr-automation.md](docs/github-pr-automation.md) for automated GitHub webhook
-bug-fixing and PR creation workflows.
+[docs/github-pr-automation.md](docs/github-pr-automation.md) for automated GitHub webhook
+bug-fixing and PR creation workflows, and [docs/piston.md](docs/piston.md) for the self-hosted
+Piston code execution engine used by platform-workers.
 
 ## Status
 

@@ -71,6 +71,8 @@ resource "oci_core_instance" "hermes" {
         hermes_webhook_service_unit      = file("${path.module}/../systemd/hermes-github-webhook.service")
         vscode_setup_script              = file("${path.module}/../scripts/vscode-setup.sh")
         code_server_service_unit         = file("${path.module}/../systemd/code-server.service")
+        piston_setup_script              = file("${path.module}/../scripts/piston-setup.sh")
+        piston_service_unit              = file("${path.module}/../systemd/piston.service")
         hermes_user                      = var.hermes_user
         data_volume_device               = var.data_volume_device
         swap_size_gb                     = var.swap_size_gb

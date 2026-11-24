@@ -271,6 +271,12 @@ if [ -f /usr/local/bin/vscode-setup.sh ]; then
   /usr/local/bin/vscode-setup.sh --start || true
 fi
 
+# Provision Piston code execution engine and start service
+if [ -f /usr/local/bin/piston-setup.sh ]; then
+  log "provisioning Piston code execution engine"
+  /usr/local/bin/piston-setup.sh --start || true
+fi
+
 # --- 12. OS hardening: unattended security upgrades, logrotate, fail2ban ---
 log "configuring unattended-upgrades, logrotate, and fail2ban"
 apt-get install -y -qq unattended-upgrades fail2ban python3-systemd
