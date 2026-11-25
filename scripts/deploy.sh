@@ -83,6 +83,7 @@ if [ "$DO_SYNC_ALL" = true ]; then
   scp "${REPO_ROOT}/scripts/hermes-github-webhook.py" "${REMOTE_HOST}:/home/hermes/scripts/hermes-github-webhook.py"
   scp "${REPO_ROOT}/scripts/hermes-setup.sh" "${REMOTE_HOST}:/tmp/hermes-setup.sh"
   scp "${REPO_ROOT}/scripts/vscode-setup.sh" "${REMOTE_HOST}:/tmp/vscode-setup.sh"
+  scp "${REPO_ROOT}/scripts/piston-setup.sh" "${REMOTE_HOST}:/tmp/piston-setup.sh"
   scp "${REPO_ROOT}/scripts/hermes-backup.sh" "${REMOTE_HOST}:/tmp/hermes-backup.sh"
   scp "${REPO_ROOT}/scripts/git-mirror.sh" "${REMOTE_HOST}:/tmp/git-mirror.sh"
   scp "${REPO_ROOT}/scripts/check-backup-freshness.sh" "${REMOTE_HOST}:/tmp/check-backup-freshness.sh"
@@ -95,6 +96,7 @@ if [ "$DO_SYNC_ALL" = true ]; then
     chmod +x /home/hermes/scripts/*.py 2>/dev/null || true
     sudo cp /tmp/hermes-setup.sh /usr/local/bin/hermes-setup.sh
     sudo cp /tmp/vscode-setup.sh /usr/local/bin/vscode-setup.sh
+    sudo cp /tmp/piston-setup.sh /usr/local/bin/piston-setup.sh
     sudo cp /tmp/hermes-backup.sh /usr/local/bin/hermes-backup.sh
     sudo cp /tmp/git-mirror.sh /usr/local/bin/git-mirror.sh
     sudo cp /tmp/check-backup-freshness.sh /usr/local/bin/check-backup-freshness.sh

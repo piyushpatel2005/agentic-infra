@@ -21,6 +21,34 @@ START_SERVICE=false
 INSTALL_RUNTIMES=true
 TUNNEL_TOKEN=""
 
+# Shared by fresh installs and the wrapper-only upgrade. No downloads or daemon changes.
+install_go_wrapper() (
+  set -eu
+  local dir=$1 tmp
+  [[ -x "$dir/go/bin/go" ]] || { printf 'Missing Go installation: %s\n' "$dir" >&2; exit 1; }
+  tmp=$(mktemp "$dir/.run.XXXXXX")
+  trap 'rm -f "$tmp"' EXIT
+  cat > "$tmp" <<'GO_RUN'
+#!/usr/bin/env bash
+set -eu
+# Piston supplies the entrypoint first; the Worker lists sibling sources only
+# for non-module projects. Never append these names to a second *.go expansion.
+if [[ -f go.mod ]]; then
+  shift
+  exec go run . "$@"
+fi
+exec go run "$@"
+GO_RUN
+  chmod 755 "$tmp"
+  mv -f "$tmp" "$dir/run"
+)
+
+# Deliberately standalone: never fetch/reset the fork or restart running services.
+if [[ $# == 1 && $1 == --refresh-go-wrapper ]]; then
+  install_go_wrapper "$PISTON_DIR/data/piston/packages/go/1.16.2"
+  exit 0
+fi
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --start|-s)
@@ -40,7 +68,7 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --help|-h)
-      echo "Usage: $0 [--start] [--no-runtimes] [--port 2000] [--tunnel-token <cloudflare-token>]"
+      echo "Usage: $0 [--start] [--no-runtimes] [--port 2000] [--tunnel-token <cloudflare-token>] | --refresh-go-wrapper"
       exit 0
       ;;
     *)
@@ -236,14 +264,7 @@ EOF
 GOROOT=/piston/packages/go/1.16.2/go
 PATH=/piston/packages/go/1.16.2/go/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin:.
 EOF
-          cat << "EOF" > "${GO_DIR}/run"
-#!/usr/bin/env bash
-if [ -f "go.mod" ]; then
-    go run . "$@"
-else
-    go run *.go "$@"
-fi
-EOF
+
           cat << "EOF" > "${GO_DIR}/pkg-info.json"
 {
   "language": "go",
@@ -252,8 +273,8 @@ EOF
 }
 EOF
           touch "${GO_DIR}/.ppman-installed"
-          chmod +x "${GO_DIR}/run"
         fi
+        install_go_wrapper "$GO_DIR"
 
         # 4. Java 15.0.2 (with multi-file support)
         JAVA_DIR="${PISTON_DIR}/data/piston/packages/java/15.0.2"
@@ -354,7 +375,6 @@ EOF
         post_pkg '{"language":"rust","version":"1.68.2"}'
       fi
       log "All 5 language runtimes installed and configured."
-    fi
     fi
   fi
 else
